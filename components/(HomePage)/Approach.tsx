@@ -15,8 +15,7 @@ gsap.registerPlugin(ScrollTrigger);
   Layout
   - phone / tablet: "My approach" stays pinned at the top (with a 01 / 05 counter),
     the cards stack underneath it.
-  - laptop: two columns. Left: the heading, the intro and a step index that follows the scroll
-    (sticky). Right: the stack of cards.
+  - laptop: two columns. Left: the heading and the intro (sticky). Right: the stack of cards.
 
   Stacking (push-up)
   - Every card sticks at the same line, the lowest slot of the stack.
@@ -32,14 +31,13 @@ gsap.registerPlugin(ScrollTrigger);
   04 MVP roadmap          -> progress climbs the staircase and lights each milestone
   05 Development & test   -> code -> tests; first a test fails and loops back, then it passes and releases
 
-  With "reduce motion" enabled in the OS, the diagrams are static. The stacking still follows the
-  scroll (it is driven by the person scrolling, not by autoplay).
+  Motion: like the hero diagram, the requests are always on (slow and small). With "reduce motion"
+  enabled in the OS only the intro and the pulses are skipped. The stacking follows the scroll.
 */
 
 const INK = "#f4f1ea";
 const BG = "#0a0a0a";
 const LINE = "#34332f";
-const MUTED = "#8b8780";
 const ACCENT = "#f04427";
 const HAIR = 0.9;
 
@@ -235,7 +233,7 @@ const TEST_ROUTES: Route[] = [
 
 /* ---------- Request engine (same idea as GeometrySlice) ---------- */
 
-function runRequest(svg: SVGSVGElement, routes: Route[]) {
+function runRequest(svg: SVGSVGElement, routes: Route[], reduced: boolean) {
   const q = (id: string) => svg.querySelector<SVGElement>(`[data-m="${id}"]`)!;
   const trail = q("trail");
   const head = q("head");
@@ -281,7 +279,7 @@ function runRequest(svg: SVGSVGElement, routes: Route[]) {
 
   const tl = gsap.timeline({
     paused: true,
-    delay: 1.8,
+    delay: reduced ? 0.4 : 1.8,
     repeat: -1,
     onRepeat: () => {
       st.r = (st.r + 1) % routes.length;
@@ -291,7 +289,7 @@ function runRequest(svg: SVGSVGElement, routes: Route[]) {
   // request -> reaches its target -> the target pulses -> the response retracts
   tl.to(st, { u: 1, duration: 2.8, ease: "power2.inOut", onUpdate: render })
     .add(() => {
-      const id = routes[st.r].pulse;
+      const id = reduced ? undefined : routes[st.r].pulse;
       const p = id ? q(id) : null;
       if (p) {
         gsap.fromTo(
@@ -377,8 +375,6 @@ export function Approach() {
     const q = gsap.utils.selector(el);
     const cards = q("[data-step]") as HTMLElement[];
     const stackEl = q("[data-stack]")[0] as HTMLElement;
-    const items = q("[data-idx]") as HTMLElement[];
-    const nums = q("[data-idx-n]") as HTMLElement[];
     const count = q("[data-count]")[0] as HTMLElement | undefined;
 
     const stick = (c: HTMLElement) => parseFloat(getComputedStyle(c).top) || 0; // where every card sticks
@@ -386,8 +382,6 @@ export function Approach() {
     const gap = () => parseFloat(getComputedStyle(cards[0]).marginBottom) || 0;
 
     const setActive = (a: number) => {
-      items.forEach((it, k) => (it.style.color = k === a ? INK : MUTED));
-      nums.forEach((nm, k) => (nm.style.color = k === a ? ACCENT : MUTED));
       if (count) count.textContent = `${pad(a + 1)} / ${pad(N)}`;
     };
 
@@ -415,7 +409,7 @@ export function Approach() {
         }
       }
 
-      // step index (left column) and counter (phone header) follow the stack
+      // counter in the phone header follows the stack
       for (let i = 1; i < N; i++) {
         ScrollTrigger.create({
           trigger: cards[i],
@@ -426,37 +420,54 @@ export function Approach() {
       }
     }, el);
 
-    /* autoplay part: skipped with "reduce motion" */
+    /*
+      diagrams: same rule as the hero diagram. The requests are always on (slow and small).
+      With "reduce motion" enabled in the OS, only the intro and the pulses are skipped.
+    */
     const mm = gsap.matchMedia();
-    mm.add("(prefers-reduced-motion: no-preference)", () => {
-      gsap.fromTo(
-        q("[data-head]"),
-        { opacity: 0, y: 10 },
-        { opacity: 1, y: 0, duration: 0.9, ease: "power2.out", stagger: 0.1, scrollTrigger: { trigger: el, start: "top 80%", once: true } }
-      );
+    mm.add(
+      {
+        full: "(prefers-reduced-motion: no-preference)",
+        reduced: "(prefers-reduced-motion: reduce)",
+      },
+      (mc) => {
+        const reduced = Boolean(mc.conditions?.reduced);
 
-      const loops: gsap.core.Timeline[] = [];
-      cards.forEach((card, i) => {
-        const r = gsap.utils.selector(card);
-        const svg = r("svg")[0] as unknown as SVGSVGElement;
+        if (!reduced) {
+          gsap.fromTo(
+            q("[data-head]"),
+            { opacity: 0, y: 10 },
+            { opacity: 1, y: 0, duration: 0.9, ease: "power2.out", stagger: 0.1, scrollTrigger: { trigger: el, start: "top 80%", once: true } }
+          );
+        }
 
-        // the diagram is laid out once, when its card comes into view
-        gsap
-          .timeline({ scrollTrigger: { trigger: card, start: "top 85%", once: true } })
-          .fromTo(r("[data-draw]"), { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 1.2, ease: "power2.inOut", stagger: 0.06 }, 0)
-          .fromTo(r("[data-pop]"), { scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: 0.6, ease: "power3.out", stagger: 0.05 }, 0.4);
+        const loops: gsap.core.Timeline[] = [];
+        cards.forEach((card, i) => {
+          const r = gsap.utils.selector(card);
+          const svg = r("svg")[0] as unknown as SVGSVGElement;
 
-        loops.push(runRequest(svg, STEPS[i].routes));
-      });
+          // the diagram is laid out once, when its card comes into view
+          if (!reduced) {
+            gsap
+              .timeline({ scrollTrigger: { trigger: card, start: "top 85%", once: true } })
+              .fromTo(r("[data-draw]"), { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 1.2, ease: "power2.inOut", stagger: 0.06 }, 0)
+              .fromTo(r("[data-pop]"), { scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: 0.6, ease: "power3.out", stagger: 0.05 }, 0.4);
+          }
 
-      // the requests only run while the stack is on screen
-      ScrollTrigger.create({
-        trigger: stackEl,
-        start: "top bottom",
-        end: "bottom top",
-        onToggle: (self) => loops.forEach((l) => (self.isActive ? l.play() : l.pause())),
-      });
-    });
+          loops.push(runRequest(svg, STEPS[i].routes, reduced));
+        });
+
+        // the requests only run while the stack is on screen
+        const setRunning = (on: boolean) => loops.forEach((l) => (on ? l.play() : l.pause()));
+        if (typeof IntersectionObserver === "undefined") {
+          setRunning(true);
+          return () => setRunning(false);
+        }
+        const io = new IntersectionObserver((entries) => setRunning(entries.some((e) => e.isIntersecting)));
+        io.observe(stackEl);
+        return () => io.disconnect();
+      }
+    );
 
     return () => {
       mm.revert();
@@ -490,25 +501,10 @@ export function Approach() {
           {INTRO}
         </p>
 
-        {/* laptop: sticky left column with the heading, the intro and a step index */}
+        {/* laptop: sticky left column with the heading and the intro; the stack sits beside it */}
         <div data-head className="hidden lg:sticky lg:top-[var(--top)] lg:col-span-4 lg:row-start-1 lg:block lg:self-start">
           <h2 className="text-6xl font-semibold leading-[0.95] tracking-[-0.04em] xl:text-7xl">My approach</h2>
           <p className="mt-6 max-w-[34ch] text-lg leading-relaxed text-[#8b8780]">{INTRO}</p>
-          <ul className="mt-10 border-t border-[#262624]">
-            {STEPS.map((s) => (
-              <li
-                key={s.n}
-                data-idx
-                style={{ color: MUTED }}
-                className="flex items-baseline gap-4 border-b border-[#262624] py-3 transition-colors duration-300 motion-reduce:transition-none"
-              >
-                <span data-idx-n style={{ color: MUTED }} className="font-[family-name:var(--font-mono)] text-xs transition-colors duration-300 motion-reduce:transition-none">
-                  {s.n}
-                </span>
-                <span className="text-base">{s.title}</span>
-              </li>
-            ))}
-          </ul>
         </div>
 
         {/* the stack */}
