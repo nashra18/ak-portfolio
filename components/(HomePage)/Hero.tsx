@@ -336,6 +336,7 @@ export function Testimonials() {
             <figcaption className="mt-5 font-[family-name:var(--font-mono)] text-xs text-[#8b8780]">
               {t.name} <span className="text-[#f04427]">/</span> {t.role}
             </figcaption>
+            
           </figure>
         ))}
       </div>
