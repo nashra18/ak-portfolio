@@ -3,61 +3,92 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { Bricolage_Grotesque, DM_Sans } from "next/font/google";
 
 gsap.registerPlugin(ScrollTrigger);
 
+const display = Bricolage_Grotesque({ subsets: ["latin"], display: "swap", variable: "--font-approach-display" });
+const body = DM_Sans({ subsets: ["latin"], display: "swap", variable: "--font-approach-body" });
+const DISPLAY = "font-[family-name:var(--font-approach-display)]";
+
 /*
   My approach: five steps as stacking cards, each with a small wiring diagram.
-  Same language and same motion as the hero diagram (GeometrySlice):
-  a request leaves an input, draws a vermilion trail, lights up the nodes it reaches,
-  pulses its target, then retracts as the response.
+  Same theme as the hero, tuned for contrast.
 
-  Layout
-  - phone / tablet: "My approach" stays pinned at the top (with a 01 / 05 counter),
-    the cards stack underneath it.
-  - laptop: two columns. Left: the heading and the intro (sticky). Right: the stack of cards.
+  Palette
+  Cream     #F6F7EB  section background, lit nodes, head of the request, text on cards
+  Vermilion #E94F37  accents on the cream background (gauge arc, full stop)
+  Coral     #FF8A75  small text and the request trail on the dark cards (4.7:1 on charcoal)
+  Coral Fill #FF6B54 filled targets in the diagrams (3.9:1 on charcoal)
+  Charcoal  #393E41  cards, headings and body text on the cream background
 
-  Stacking (push-up)
-  - Every card sticks at the same line, the lowest slot of the stack.
-  - When the next card slides over, all earlier cards move up by one title strip and dim a little
-    (scrubbed with scroll), so only their titles remain: 01 Define, 02 Architecture, ...
-  - The last card is pinned like all the others (the spacer at the end of the list holds the stack
-    for a moment before the whole stack scrolls away).
-
-  Diagrams (each one loops while the stack is on screen)
-  01 Define               -> four inputs converge on one point
-  02 Architecture         -> client -> gateway -> one of three services -> data layer
-  03 Database & API       -> an endpoint -> the bus -> a data slab
-  04 MVP roadmap          -> progress climbs the staircase and lights each milestone
-  05 Development & test   -> code -> tests; first a test fails and loops back, then it passes and releases
-
-  Motion: like the hero diagram, the requests are always on (slow and small). With "reduce motion"
-  enabled in the OS only the intro and the pulses are skipped. The stacking follows the scroll.
+  Why coral: the original vermilion on charcoal is only about 2.9:1, too low for small text.
+  Layout, stacking and motion are unchanged.
 */
 
-const INK = "#f4f1ea";
-const BG = "#0a0a0a";
-const LINE = "#34332f";
-const ACCENT = "#f04427";
-const HAIR = 0.9;
+const INK = "#F6F7EB"; // lit nodes, head of the request
+const BG = "#393E41"; // card surface, also the fill of an unlit node
+const LINE = "rgba(246,247,235,0.6)"; // diagram lines on a card
+const SLATE = "rgba(246,247,235,0.8)"; // guide line of the request
+const STEEL = "#FF8A75"; // trail, halo and pulse rings
+const ACCENT = "#FF6B54"; // where the request lands
+const HAIR = 1;
 
 type Pt = [number, number];
 type Hit = { id: string; at: number }; // lights data-lit / data-show = id when the request reaches point `at`
 type Route = { pts: Pt[]; hits: Hit[]; pulse?: string };
 
 const stroke = { stroke: LINE, strokeWidth: HAIR } as const;
-const ink = { stroke: INK, strokeWidth: 1.1 } as const;
+const ink = { stroke: INK, strokeWidth: 1.4 } as const;
 const draw = { "data-draw": "", pathLength: 1, strokeDasharray: "1" } as const;
-const ring = { fill: "none", stroke: ACCENT, strokeWidth: 1, opacity: 0 } as const;
+const ring = { fill: "none", stroke: STEEL, strokeWidth: 1.4, opacity: 0 } as const;
+
+/* ---------- splits a string into masked words so each one can animate on its own ---------- */
+
+function Words({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(" ").flatMap((w, i) => {
+        const word = (
+          <span
+            key={i}
+            aria-hidden
+            className="-mb-[0.14em] -mt-[0.06em] inline-block overflow-hidden pb-[0.14em] pt-[0.06em] align-top"
+          >
+            <span data-word className="inline-block opacity-0 will-change-transform motion-reduce:opacity-100">
+              {w}
+            </span>
+          </span>
+        );
+        return i ? [" ", word] : [word];
+      })}
+    </>
+  );
+}
 
 /* ---------- the request: trail + head (drawn on top of every diagram) ---------- */
 
 function Request() {
   return (
     <>
-      <polyline data-m="trail" points="" stroke={ACCENT} strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" opacity="0" />
-      <circle data-m="head" cx="0" cy="0" r="3.6" fill={ACCENT} opacity="0" />
+      <polyline data-m="guide" points="" stroke={SLATE} strokeWidth="1" strokeDasharray="1.5 4" strokeLinejoin="round" opacity="0" />
+      <polyline data-m="trail" points="" stroke={STEEL} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" opacity="0" />
+      <circle data-m="halo" cx="0" cy="0" r="9" stroke={STEEL} strokeWidth="1" opacity="0" />
+      <circle data-m="head" cx="0" cy="0" r="3.6" fill={INK} opacity="0" />
     </>
+  );
+}
+
+/* ---------- drafting frame: corner marks + ruler ticks ---------- */
+
+const TICKS = [40, 60, 80, 100, 120, 140, 160].map((v) => `M4 ${v}H7M${v} 196V193`).join("");
+
+function Frame() {
+  return (
+    <g aria-hidden stroke={LINE} strokeWidth={HAIR} fill="none" opacity="0.9">
+      <path d="M4 16V4H16M184 4H196V16M196 184V196H184M16 196H4V184" />
+      <path d={TICKS} />
+    </g>
   );
 }
 
@@ -107,7 +138,7 @@ function ArchitectureArt() {
         <line key={`u-${x}`} {...draw} {...stroke} x1={x} y1="116" x2={x} y2="148" />
       ))}
       <circle data-pop data-lit="client" cx="100" cy="14" r="4.5" fill={BG} {...ink} />
-      <rect data-pop data-lit="gw" x="86" y="28" width="28" height="28" fill={BG} {...ink} strokeWidth={1.4} />
+      <rect data-pop data-lit="gw" x="86" y="28" width="28" height="28" fill={BG} {...ink} strokeWidth={1.6} />
       {AX.map((x, i) => (
         <rect key={`n-${x}`} data-pop data-lit={`svc-${i}`} x={x - 14} y="88" width="28" height="28" fill={BG} {...ink} />
       ))}
@@ -172,7 +203,7 @@ function RoadmapArt() {
       ))}
       <path {...draw} {...ink} strokeLinejoin="round" d="M24 160 H64 V120 H104 V80 H144 V40 H176" />
       {nodes.slice(0, 3).map((n, i) => (
-        <circle key={`m-${i}`} data-pop data-lit={`m${i}`} cx={n[0]} cy={n[1]} r="4" fill={BG} {...ink} strokeWidth="1" />
+        <circle key={`m-${i}`} data-pop data-lit={`m${i}`} cx={n[0]} cy={n[1]} r="4" fill={BG} {...ink} strokeWidth="1.3" />
       ))}
       <circle data-pop cx="144" cy="40" r="5.5" fill={ACCENT} />
       <circle data-m="pulse" data-grow="2.6" cx="144" cy="40" r="5.5" {...ring} />
@@ -202,7 +233,7 @@ function TestArt() {
       {/* a failing test sends the work back to code */}
       <path {...draw} {...stroke} strokeLinejoin="round" d="M100 114 V152 H34 V114" />
       <rect data-pop data-lit="code" x="20" y="86" width="28" height="28" fill={BG} {...ink} />
-      <rect data-pop data-lit="test" x="86" y="86" width="28" height="28" fill={BG} {...ink} strokeWidth={1.4} />
+      <rect data-pop data-lit="test" x="86" y="86" width="28" height="28" fill={BG} {...ink} strokeWidth={1.6} />
       <polyline data-show="check" {...draw} {...ink} strokeLinecap="round" strokeLinejoin="round" points="93,100 98,106 108,94" />
       <circle data-pop cx="166" cy="100" r="10" fill={ACCENT} />
       <circle data-m="pulse" data-grow="2" cx="166" cy="100" r="10" {...ring} />
@@ -235,7 +266,9 @@ const TEST_ROUTES: Route[] = [
 
 function runRequest(svg: SVGSVGElement, routes: Route[], reduced: boolean) {
   const q = (id: string) => svg.querySelector<SVGElement>(`[data-m="${id}"]`)!;
+  const guide = q("guide");
   const trail = q("trail");
+  const halo = q("halo");
   const head = q("head");
   const lits = Array.from(svg.querySelectorAll<SVGElement>("[data-lit]"));
   const shows = Array.from(svg.querySelectorAll<SVGElement>("[data-show]"));
@@ -268,9 +301,14 @@ function runRequest(svg: SVGSVGElement, routes: Route[], reduced: boolean) {
     const on = st.u > 0.002 ? "1" : "0";
     trail.setAttribute("points", out.map((p) => `${p[0].toFixed(2)},${p[1].toFixed(2)}`).join(" "));
     trail.setAttribute("opacity", on);
+    guide.setAttribute("points", pts.map((p) => `${p[0]},${p[1]}`).join(" "));
+    guide.setAttribute("opacity", on);
     head.setAttribute("cx", h[0].toFixed(2));
     head.setAttribute("cy", h[1].toFixed(2));
     head.setAttribute("opacity", on);
+    halo.setAttribute("cx", h[0].toFixed(2));
+    halo.setAttribute("cy", h[1].toFixed(2));
+    halo.setAttribute("opacity", st.u > 0.002 ? "0.5" : "0");
 
     const reached = new Set(hits.filter((x) => st.u > 0.002 && d >= cum[x.at] - 0.01).map((x) => x.id));
     lits.forEach((el) => el.setAttribute("fill", reached.has(el.dataset.lit ?? "") ? INK : BG));
@@ -316,6 +354,7 @@ const STEPS: {
   title: string;
   lead: string;
   body: string;
+  out: string; // what you hold at the end of the step
   Art: () => React.JSX.Element;
   routes: Route[];
 }[] = [
@@ -324,6 +363,7 @@ const STEPS: {
     title: "Define",
     lead: "Scope before code.",
     body: "I work with you to pin down who the users are, what the system must do, and what it must never do. The result is a short, written scope that everyone agrees on.",
+    out: "A one-page written scope",
     Art: DefineArt,
     routes: DEFINE_ROUTES,
   },
@@ -332,6 +372,7 @@ const STEPS: {
     title: "Architecture",
     lead: "Clear boundaries, simple flow.",
     body: "I map how requests move through the system: gateway, services, queues and the data layer. The result stays fast, secure, and easy to change as it grows.",
+    out: "System diagram and service map",
     Art: ArchitectureArt,
     routes: ARCH_ROUTES,
   },
@@ -340,6 +381,7 @@ const STEPS: {
     title: "Database & API design",
     lead: "Schema first, endpoints second.",
     body: "Clean models, predictable contracts, sensible indexes and proper authentication, all documented before any feature code is written.",
+    out: "Schema and API contract",
     Art: DataArt,
     routes: DATA_ROUTES,
   },
@@ -348,6 +390,7 @@ const STEPS: {
     title: "MVP roadmap",
     lead: "The smallest useful version first.",
     body: "I break the work into small milestones. Each one has a clear outcome and a date, so you always know what is being built next and what can wait.",
+    out: "A dated milestone plan",
     Art: RoadmapArt,
     routes: ROADMAP_ROUTES,
   },
@@ -356,13 +399,51 @@ const STEPS: {
     title: "Development & testing",
     lead: "Nothing ships untested.",
     body: "Each milestone is built with Spring Boot and covered by unit and integration tests. If a test fails, the work goes back to code before anything ships.",
+    out: "A tested, release-ready build",
     Art: TestArt,
     routes: TEST_ROUTES,
   },
 ];
 
 const N = STEPS.length;
-const pad = (n: number) => String(n).padStart(2, "0");
+
+/* ---------- Ring gauge (laptop, left column) ---------- */
+
+// one tick on the ring at the end of every step, drawn like the ruler ticks of the diagrams
+const GAUGE_TICKS = Array.from({ length: N }, (_, i) => {
+  const a = -Math.PI / 2 + (2 * Math.PI * (i + 1)) / N;
+  const f = (r: number, t: "x" | "y") => (70 + r * (t === "x" ? Math.cos(a) : Math.sin(a))).toFixed(2);
+  return `M${f(59, "x")} ${f(59, "y")}L${f(66, "x")} ${f(66, "y")}`;
+}).join("");
+
+function Gauge() {
+  return (
+    <div aria-hidden data-fade className="relative mt-12 aspect-square w-[132px] opacity-0 motion-reduce:opacity-100">
+      <svg viewBox="0 0 140 140" fill="none" className="absolute inset-0 h-full w-full">
+        <circle cx="70" cy="70" r="52" stroke="rgba(57,62,65,0.3)" strokeWidth="1.5" />
+        <circle
+          data-gauge-arc
+          cx="70"
+          cy="70"
+          r="52"
+          stroke="#E94F37"
+          strokeWidth="3.5"
+          pathLength={1}
+          strokeDasharray="1"
+          strokeDashoffset={1 - 1 / N}
+          transform="rotate(-90 70 70)"
+        />
+        <path d={GAUGE_TICKS} stroke="rgba(57,62,65,0.7)" strokeWidth="1.5" />
+      </svg>
+      <div className="absolute inset-0 flex items-baseline justify-center pt-[46px]">
+        <span data-gauge-n className={`${DISPLAY} text-4xl font-bold leading-none tracking-[-0.04em] text-[#393E41] tabular-nums`}>
+          01
+        </span>
+        <span className={`${DISPLAY} ml-1 text-[11px] font-semibold text-[#393E41]/80`}>/0{N}</span>
+      </div>
+    </div>
+  );
+}
 
 /* ---------- Section ---------- */
 
@@ -374,51 +455,66 @@ export function Approach() {
     if (!el) return;
     const q = gsap.utils.selector(el);
     const cards = q("[data-step]") as HTMLElement[];
+    const shades = q("[data-shade]") as HTMLElement[];
     const stackEl = q("[data-stack]")[0] as HTMLElement;
-    const count = q("[data-count]")[0] as HTMLElement | undefined;
+    const gaugeArc = el.querySelector<SVGCircleElement>("[data-gauge-arc]");
+    const gaugeN = el.querySelector<HTMLElement>("[data-gauge-n]");
 
-    const stick = (c: HTMLElement) => parseFloat(getComputedStyle(c).top) || 0; // where every card sticks
-    const step = () => parseFloat(getComputedStyle(stackEl).getPropertyValue("--step")) || 56; // title strip height
-    const gap = () => parseFloat(getComputedStyle(cards[0]).marginBottom) || 0;
-
-    const setActive = (a: number) => {
-      if (count) count.textContent = `${pad(a + 1)} / ${pad(N)}`;
+    /*
+      Push-up stacking. One function, called on every scroll, works out everything from the scroll position:
+      how far each card has travelled towards the stack (p), how far each older card is pushed up, how dark
+      it is, and where the gauge is. It measures from the stack (a plain block that never moves or
+      transforms), so it does not depend on any earlier state.
+    */
+    let stick = 0; // where every card sticks
+    let step = 0; // height of one title strip
+    let gap = 0; // space between cards
+    let hs: number[] = []; // card heights
+    let nat: number[] = []; // natural top of each card, measured from the top of the stack
+    const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+    const measure = () => {
+      const cs = getComputedStyle(cards[0]);
+      stick = parseFloat(cs.top) || 0;
+      gap = parseFloat(cs.marginBottom) || 0;
+      step = parseFloat(getComputedStyle(stackEl).getPropertyValue("--step")) || 56;
+      hs = cards.map((c) => c.offsetHeight);
+      nat = [0];
+      for (let j = 1; j < N; j++) nat[j] = nat[j - 1] + hs[j - 1] + gap;
+    };
+    const update = () => {
+      if (!nat.length) return;
+      const base = stackEl.getBoundingClientRect().top; // natural top of card 01
+      const p: number[] = new Array(N).fill(0); // 0 = card j still below the stack, 1 = card j has arrived
+      let sum = 0;
+      let active = 0;
+      for (let j = 1; j < N; j++) {
+        const len = hs[j - 1] + gap; // distance card j travels while it slides over the one before it
+        p[j] = clamp01((stick + len - (base + nat[j])) / len);
+        sum += p[j];
+        if (p[j] > 0.6) active = j;
+      }
+      // every card that has arrived above card i pushes it up by one title strip and dims it a little
+      for (let i = 0; i < N; i++) {
+        let k = 0;
+        for (let j = i + 1; j < N; j++) k += p[j];
+        cards[i].style.transform = `translate3d(0, ${(-k * step).toFixed(2)}px, 0)`;
+        shades[i].style.opacity = (k * 0.14).toFixed(3);
+      }
+      gaugeArc?.setAttribute("stroke-dashoffset", String(1 - (1 + sum) / N));
+      if (gaugeN && gaugeN.textContent !== STEPS[active].n) gaugeN.textContent = STEPS[active].n;
+    };
+    const refresh = () => {
+      measure();
+      update();
     };
 
-    /* scroll-driven part: always on (it follows the person's scroll, it is not autoplay) */
-    const ctx = gsap.context(() => {
-      setActive(0);
-
-      // when card j slides over the stack, every earlier card moves up by one title strip and dims a little
-      for (let j = 1; j < N; j++) {
-        const tl = gsap.timeline({
-          defaults: { ease: "none" },
-          scrollTrigger: {
-            trigger: cards[j],
-            start: () => `top ${stick(cards[j]) + cards[j].offsetHeight + gap()}px`,
-            end: () => `top ${stick(cards[j])}px`,
-            scrub: true,
-            invalidateOnRefresh: true,
-          },
-        });
-        for (let i = 0; i < j; i++) {
-          const k = j - i; // cards sitting on top of card i once card j has arrived
-          const shade = cards[i].querySelector("[data-shade]");
-          tl.fromTo(cards[i], { y: () => -(k - 1) * step() }, { y: () => -k * step(), immediateRender: false }, 0);
-          if (shade) tl.fromTo(shade, { opacity: (k - 1) * 0.14 }, { opacity: k * 0.14, immediateRender: false }, 0);
-        }
-      }
-
-      // counter in the phone header follows the stack
-      for (let i = 1; i < N; i++) {
-        ScrollTrigger.create({
-          trigger: cards[i],
-          start: () => `top ${stick(cards[i]) + cards[i].offsetHeight * 0.5}px`,
-          onEnter: () => setActive(i),
-          onLeaveBack: () => setActive(i - 1),
-        });
-      }
-    }, el);
+    refresh();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", refresh);
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(refresh) : null;
+    ro?.observe(stackEl);
+    cards.forEach((c) => ro?.observe(c));
+    document.fonts?.ready.then(refresh);
 
     /*
       diagrams: same rule as the hero diagram. The requests are always on (slow and small).
@@ -434,11 +530,36 @@ export function Approach() {
         const reduced = Boolean(mc.conditions?.reduced);
 
         if (!reduced) {
-          gsap.fromTo(
-            q("[data-head]"),
-            { opacity: 0, y: 10 },
-            { opacity: 1, y: 0, duration: 0.9, ease: "power2.out", stagger: 0.1, scrollTrigger: { trigger: el, start: "top 80%", once: true } }
-          );
+          const titleWords = q("[data-title] [data-word]");
+          const paraWords = q("[data-para] [data-word]");
+          const fade = q("[data-fade]");
+
+          // start state: every word sits below its mask
+          gsap.set([titleWords, paraWords], { yPercent: 110, opacity: 1 });
+          gsap.set(fade, { opacity: 0, y: 16 });
+
+          gsap
+            .timeline({ delay: 0.2, defaults: { overwrite: "auto" } })
+            // title: clean masked slide-up, word by word
+            .to(titleWords, {
+              yPercent: 0,
+              duration: 1.4,
+              ease: "expo.out",
+              stagger: 0.09,
+            })
+            // paragraph: fast, soft ripple underneath
+            .to(
+              paraWords,
+              {
+                yPercent: 0,
+                duration: 1.1,
+                ease: "power4.out",
+                stagger: 0.014,
+              },
+              "-=1.0"
+            )
+            // gauge fades in last
+            .to(fade, { opacity: 1, y: 0, duration: 0.9, ease: "power3.out" }, "-=0.7");
         }
 
         const loops: gsap.core.Timeline[] = [];
@@ -470,74 +591,110 @@ export function Approach() {
     );
 
     return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", refresh);
+      ro?.disconnect();
       mm.revert();
-      ctx.revert();
     };
   }, []);
 
   return (
-    <section ref={root} id="approach" aria-label="My approach" className="bg-[#0a0a0a] px-6 py-20 text-[#f4f1ea] md:px-12 md:py-28 lg:px-14">
+    <section
+      ref={root}
+      id="approach"
+      aria-label="My approach"
+      className={`${display.variable} ${body.variable} bg-[#F6F7EB] px-5 py-16 font-[family-name:var(--font-approach-body)] text-[#393E41] antialiased md:px-12 md:py-28 lg:px-16`}
+    >
       {/*
-        --head : height of the pinned heading bar (phone / tablet only)
-        --top  : gap between the pinned heading and the stack
+        --top  : gap above the stack (the finished stack starts here, level with the heading)
         --step : height of one title strip
         --stick: the line where every card sticks (the lowest slot of the stack)
+        --gap  : space between cards
+        --card : card height on laptop
       */}
       <div
-        style={{ "--stick": `calc(var(--head) + var(--top) + ${N - 1} * var(--step))` } as React.CSSProperties}
-        className="flex flex-col [--head:52px] [--step:52px] [--top:12px] md:[--head:60px] md:[--step:64px] md:[--top:16px] lg:grid lg:grid-cols-12 lg:gap-x-12 lg:[--head:0px] lg:[--step:64px] lg:[--top:24px]"
+        style={{ "--stick": `calc(var(--top) + ${N - 1} * var(--step))` } as React.CSSProperties}
+        className="flex flex-col [--gap:1.5rem] [--step:52px] [--top:16px] md:[--gap:2.5rem] md:[--step:64px] md:[--top:24px] lg:grid lg:grid-cols-12 lg:gap-x-12 lg:[--card:clamp(360px,calc(100svh_-_var(--stick)_-_32px),520px)] lg:[--gap:4rem]"
       >
-        {/* phone / tablet: heading stays pinned while the cards stack beneath it */}
-        <div
-          data-head
-          className="sticky top-0 z-30 -mx-6 flex h-[var(--head)] items-center justify-between border-b border-[#262624] bg-[#0a0a0a] px-6 md:-mx-12 md:px-12 lg:hidden"
+        {/* phone / tablet: plain heading and intro above the stack */}
+        <h2
+          data-title
+          aria-label="My approach"
+          className={`${DISPLAY} text-[2.5rem] font-bold leading-none tracking-[-0.05em] text-[#393E41] md:text-6xl lg:hidden`}
         >
-          <h2 className="text-xl font-semibold tracking-tight md:text-2xl">My approach</h2>
-          <span data-count className="font-[family-name:var(--font-mono)] text-xs text-[#8b8780]">
-            01 / {pad(N)}
-          </span>
-        </div>
-        <p data-head className="mt-6 max-w-[48ch] text-[15px] leading-relaxed text-[#8b8780] md:text-base lg:hidden">
-          {INTRO}
+          <Words text="My approach" />
+        </h2>
+        <p
+          data-para
+          aria-label={INTRO}
+          className="mt-4 max-w-[48ch] text-base font-medium leading-[1.65] text-[#393E41]/90 md:text-lg lg:hidden"
+        >
+          <Words text={INTRO} />
         </p>
 
-        {/* laptop: sticky left column with the heading and the intro; the stack sits beside it */}
-        <div data-head className="hidden lg:sticky lg:top-[var(--top)] lg:col-span-4 lg:row-start-1 lg:block lg:self-start">
-          <h2 className="text-6xl font-semibold leading-[0.95] tracking-[-0.04em] xl:text-7xl">My approach</h2>
-          <p className="mt-6 max-w-[34ch] text-lg leading-relaxed text-[#8b8780]">{INTRO}</p>
+        {/*
+          laptop: sticky left column. Its height runs from --top to the bottom of the last card,
+          so it is released at the same moment as the stack.
+        */}
+        <div className="hidden lg:sticky lg:top-[var(--top)] lg:col-span-4 lg:row-start-1 lg:block lg:h-[calc(var(--stick)_-_var(--top)_+_var(--card)_+_var(--gap))] lg:self-start">
+          <h2
+            data-title
+            aria-label="My approach"
+            className={`${DISPLAY} -mt-[0.07em] text-6xl font-bold leading-[0.92] tracking-[-0.055em] text-[#393E41] xl:text-7xl`}
+          >
+            <Words text="My approach" />
+          </h2>
+          <p data-para aria-label={INTRO} className="mt-6 max-w-[36ch] text-lg font-medium leading-[1.6] text-[#393E41]/90">
+            <Words text={INTRO} />
+          </p>
+          <Gauge />
         </div>
 
         {/* the stack */}
-        <ol data-stack className="mt-10 lg:col-span-8 lg:col-start-5 lg:row-start-1 lg:mt-0">
-          {STEPS.map(({ n, title, lead, body, Art }) => (
+        <ol data-stack className="mt-10 md:mt-14 lg:col-span-8 lg:col-start-5 lg:row-start-1 lg:mt-0">
+          {STEPS.map(({ n, title, lead, body, out, Art }) => (
             <li
               key={n}
               data-step
               style={{ top: "var(--stick)" }}
-              className="sticky mb-6 flex min-h-[340px] flex-col border border-[#262624] bg-[#0d0d0c] will-change-transform md:mb-10 md:min-h-[400px] lg:min-h-[360px] lg:h-[clamp(360px,calc(100svh_-_var(--stick)_-_32px),520px)]"
+              className="sticky mb-[var(--gap)] flex min-h-[340px] flex-col overflow-hidden rounded-[28px] border border-[#F6F7EB]/25 bg-[#393E41] text-[#F6F7EB] shadow-[0_-12px_32px_rgba(0,0,0,0.28)] will-change-transform md:min-h-[400px] lg:h-[var(--card)] lg:min-h-[360px]"
             >
               {/* title strip: what stays visible once the next cards cover the rest */}
-              <div className="flex h-[var(--step)] shrink-0 items-center gap-3 border-b border-[#262624] px-5 md:gap-4 md:px-8 lg:px-10">
-                <span className="font-[family-name:var(--font-mono)] text-xs text-[#f04427]">{n}</span>
-                <h3 className="text-lg font-semibold tracking-tight md:text-2xl lg:text-3xl">{title}</h3>
+              <div className="flex h-[var(--step)] shrink-0 items-center gap-3 border-b border-[#F6F7EB]/30 px-5 md:gap-4 md:px-8 lg:px-10">
+                <span className={`${DISPLAY} text-xs font-bold tabular-nums text-[#FF8A75] md:text-sm`}>{n}</span>
+                <h3 className={`${DISPLAY} text-lg font-semibold leading-none tracking-[-0.03em] text-[#F6F7EB] md:text-2xl lg:text-3xl`}>{title}</h3>
               </div>
 
               {/* diagram (left) + text (right) */}
-              <div className="grid flex-1 grid-cols-[104px_1fr] items-center gap-x-5 px-5 py-6 md:grid-cols-[160px_1fr] md:gap-x-8 md:px-8 lg:grid-cols-[220px_1fr] lg:gap-x-12 lg:px-10">
-                <div aria-hidden>
-                  <svg viewBox="0 0 200 200" fill="none" className="aspect-square w-full">
+              <div className="grid flex-1 grid-cols-[104px_1fr] items-center gap-x-5 px-5 py-6 md:grid-cols-[160px_1fr] md:gap-x-8 md:px-8 lg:grid-cols-[240px_1fr] lg:gap-x-12 lg:px-10">
+                <div aria-hidden className="rounded-xl border border-[#F6F7EB]/35 bg-[#2E3234] bg-[radial-gradient(rgba(246,247,235,0.22)_1px,transparent_1px)] bg-[length:14px_14px]">
+                  <svg
+                    viewBox="0 0 200 200"
+                    fill="none"
+                    className="aspect-square w-full [&_[data-lit]]:transition-[fill] [&_[data-lit]]:duration-300 motion-reduce:[&_[data-lit]]:transition-none"
+                  >
+                    <Frame />
                     <Art />
                     <Request />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm font-medium leading-snug tracking-tight text-[#f4f1ea] md:text-xl lg:text-2xl">{lead}</p>
-                  <p className="mt-2 text-[13px] leading-relaxed text-[#8b8780] md:mt-3 md:text-base lg:max-w-[44ch]">{body}</p>
+                  <p
+                    className={`${DISPLAY} text-[15px] font-semibold leading-[1.15] tracking-[-0.02em] text-[#F6F7EB] [text-wrap:balance] md:text-xl lg:text-[1.75rem] lg:tracking-[-0.03em]`}
+                  >
+                    {lead}
+                  </p>
+                  <p className="mt-2 text-[13.5px] leading-[1.6] text-[#F6F7EB]/90 [text-wrap:pretty] md:mt-3 md:text-[16px] md:leading-[1.65] lg:max-w-[46ch]">{body}</p>
+                  {/* what you hold at the end of this step */}
+                  <p className="mt-5 hidden items-center gap-3 border-t border-[#F6F7EB]/30 pt-3 text-sm md:flex">
+                    <span className={`${DISPLAY} text-xs font-bold uppercase tracking-[0.08em] text-[#FF8A75]`}>You get</span>
+                    <span className={`${DISPLAY} text-[15px] font-semibold tracking-[-0.01em] text-[#F6F7EB]`}>{out}</span>
+                  </p>
                 </div>
               </div>
 
               {/* dims the card as newer ones stack on top of it */}
-              <div data-shade aria-hidden className="pointer-events-none absolute inset-0 bg-[#0a0a0a] opacity-0" />
+              <div data-shade aria-hidden className="pointer-events-none absolute inset-0 bg-[#141617] opacity-0" />
             </li>
           ))}
           {/* holds the finished stack on screen for a moment, so the last card is pinned like the others */}
