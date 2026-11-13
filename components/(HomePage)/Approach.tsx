@@ -13,25 +13,24 @@ const DISPLAY = "font-[family-name:var(--font-approach-display)]";
 
 /*
   My approach: five steps as stacking cards, each with a small wiring diagram.
-  Same theme as the hero, tuned for contrast.
+  Same theme as the About and Projects sections.
 
   Palette
-  Cream     #F6F7EB  section background, lit nodes, head of the request, text on cards
-  Vermilion #E94F37  accents on the cream background (gauge arc, full stop)
-  Coral     #FF8A75  small text and the request trail on the dark cards (4.7:1 on charcoal)
-  Coral Fill #FF6B54 filled targets in the diagrams (3.9:1 on charcoal)
-  Charcoal  #393E41  cards, headings and body text on the cream background
+  Frost       #F1F6FA  section background, lit nodes, head of the request, text on cards
+  Iced Denim  #4F91C9  accents on the Frost background (gauge arc), filled targets in the diagrams
+  Pistachio   #A8B85A  number and label pills on the cards, request trail inside the diagrams
+  Deep Fjord  #18364B  text, and the diagram panel on each card
+  Ice Tint    #DCE8F3  card surface
 
-  Why coral: the original vermilion on charcoal is only about 2.9:1, too low for small text.
   Layout, stacking and motion are unchanged.
 */
 
-const INK = "#F6F7EB"; // lit nodes, head of the request
-const BG = "#393E41"; // card surface, also the fill of an unlit node
-const LINE = "rgba(246,247,235,0.6)"; // diagram lines on a card
-const SLATE = "rgba(246,247,235,0.8)"; // guide line of the request
-const STEEL = "#FF8A75"; // trail, halo and pulse rings
-const ACCENT = "#FF6B54"; // where the request lands
+const INK = "#F1F6FA"; // lit nodes, head of the request
+const BG = "#18364B"; // card surface, also the fill of an unlit node
+const LINE = "rgba(241,246,250,0.6)"; // diagram lines on a card
+const SLATE = "rgba(241,246,250,0.8)"; // guide line of the request
+const STEEL = "#A8B85A"; // trail, halo and pulse rings
+const ACCENT = "#4F91C9"; // where the request lands
 const HAIR = 1;
 
 type Pt = [number, number];
@@ -420,26 +419,26 @@ function Gauge() {
   return (
     <div aria-hidden data-fade className="relative mt-12 aspect-square w-[132px] opacity-0 motion-reduce:opacity-100">
       <svg viewBox="0 0 140 140" fill="none" className="absolute inset-0 h-full w-full">
-        <circle cx="70" cy="70" r="52" stroke="rgba(57,62,65,0.3)" strokeWidth="1.5" />
+        <circle cx="70" cy="70" r="52" stroke="rgba(24,54,75,0.3)" strokeWidth="1.5" />
         <circle
           data-gauge-arc
           cx="70"
           cy="70"
           r="52"
-          stroke="#E94F37"
+          stroke="#4F91C9"
           strokeWidth="3.5"
           pathLength={1}
           strokeDasharray="1"
           strokeDashoffset={1 - 1 / N}
           transform="rotate(-90 70 70)"
         />
-        <path d={GAUGE_TICKS} stroke="rgba(57,62,65,0.7)" strokeWidth="1.5" />
+        <path d={GAUGE_TICKS} stroke="rgba(24,54,75,0.7)" strokeWidth="1.5" />
       </svg>
       <div className="absolute inset-0 flex items-baseline justify-center pt-[46px]">
-        <span data-gauge-n className={`${DISPLAY} text-4xl font-bold leading-none tracking-[-0.04em] text-[#393E41] tabular-nums`}>
+        <span data-gauge-n className={`${DISPLAY} text-4xl font-bold leading-none tracking-[-0.04em] text-[#18364B] tabular-nums`}>
           01
         </span>
-        <span className={`${DISPLAY} ml-1 text-[11px] font-semibold text-[#393E41]/80`}>/0{N}</span>
+        <span className={`${DISPLAY} ml-1 text-[11px] font-semibold text-[#18364B]/80`}>/0{N}</span>
       </div>
     </div>
   );
@@ -603,7 +602,7 @@ export function Approach() {
       ref={root}
       id="approach"
       aria-label="My approach"
-      className={`${display.variable} ${body.variable} bg-[#F6F7EB] px-5 py-16 font-[family-name:var(--font-approach-body)] text-[#393E41] antialiased md:px-12 md:py-28 lg:px-16`}
+      className={`${display.variable} ${body.variable} bg-[#F1F6FA] px-5 py-16 font-[family-name:var(--font-approach-body)] text-[#18364B] antialiased selection:bg-[#A8B85A] selection:text-[#18364B] md:px-12 md:py-28 lg:px-16`}
     >
       {/*
         --top  : gap above the stack (the finished stack starts here, level with the heading)
@@ -620,14 +619,14 @@ export function Approach() {
         <h2
           data-title
           aria-label="My approach"
-          className={`${DISPLAY} text-[2.5rem] font-bold leading-none tracking-[-0.05em] text-[#393E41] md:text-6xl lg:hidden`}
+          className={`${DISPLAY} text-[2.5rem] font-bold leading-none tracking-[-0.05em] text-[#18364B] md:text-6xl lg:hidden`}
         >
           <Words text="My approach" />
         </h2>
         <p
           data-para
           aria-label={INTRO}
-          className="mt-4 max-w-[48ch] text-base font-medium leading-[1.65] text-[#393E41]/90 md:text-lg lg:hidden"
+          className="mt-4 max-w-[48ch] text-base font-medium leading-[1.65] text-[#18364B]/90 md:text-lg lg:hidden"
         >
           <Words text={INTRO} />
         </p>
@@ -640,11 +639,11 @@ export function Approach() {
           <h2
             data-title
             aria-label="My approach"
-            className={`${DISPLAY} -mt-[0.07em] text-6xl font-bold leading-[0.92] tracking-[-0.055em] text-[#393E41] xl:text-7xl`}
+            className={`${DISPLAY} -mt-[0.07em] text-6xl font-bold leading-[0.92] tracking-[-0.055em] text-[#18364B] xl:text-7xl`}
           >
             <Words text="My approach" />
           </h2>
-          <p data-para aria-label={INTRO} className="mt-6 max-w-[36ch] text-lg font-medium leading-[1.6] text-[#393E41]/90">
+          <p data-para aria-label={INTRO} className="mt-6 max-w-[36ch] text-lg font-medium leading-[1.6] text-[#18364B]/90">
             <Words text={INTRO} />
           </p>
           <Gauge />
@@ -657,17 +656,17 @@ export function Approach() {
               key={n}
               data-step
               style={{ top: "var(--stick)" }}
-              className="sticky mb-[var(--gap)] flex min-h-[340px] flex-col overflow-hidden rounded-[28px] border border-[#F6F7EB]/25 bg-[#393E41] text-[#F6F7EB] shadow-[0_-12px_32px_rgba(0,0,0,0.28)] will-change-transform md:min-h-[400px] lg:h-[var(--card)] lg:min-h-[360px]"
+              className="sticky mb-[var(--gap)] flex min-h-[340px] flex-col overflow-hidden rounded-[28px] border border-[#18364B]/15 bg-[#DCE8F3] text-[#18364B] shadow-[0_-12px_32px_rgba(24,54,75,0.16)] will-change-transform md:min-h-[400px] lg:h-[var(--card)] lg:min-h-[360px]"
             >
               {/* title strip: what stays visible once the next cards cover the rest */}
-              <div className="flex h-[var(--step)] shrink-0 items-center gap-3 border-b border-[#F6F7EB]/30 px-5 md:gap-4 md:px-8 lg:px-10">
-                <span className={`${DISPLAY} text-xs font-bold tabular-nums text-[#FF8A75] md:text-sm`}>{n}</span>
-                <h3 className={`${DISPLAY} text-lg font-semibold leading-none tracking-[-0.03em] text-[#F6F7EB] md:text-2xl lg:text-3xl`}>{title}</h3>
+              <div className="flex h-[var(--step)] shrink-0 items-center gap-3 border-b border-[#18364B]/20 px-5 md:gap-4 md:px-8 lg:px-10">
+                <span className={`${DISPLAY} rounded-full bg-[#A8B85A] px-2 py-1 text-xs font-bold tabular-nums text-[#18364B] md:text-sm`}>{n}</span>
+                <h3 className={`${DISPLAY} text-lg font-semibold leading-none tracking-[-0.03em] text-[#18364B] md:text-2xl lg:text-3xl`}>{title}</h3>
               </div>
 
               {/* diagram (left) + text (right) */}
               <div className="grid flex-1 grid-cols-[104px_1fr] items-center gap-x-5 px-5 py-6 md:grid-cols-[160px_1fr] md:gap-x-8 md:px-8 lg:grid-cols-[240px_1fr] lg:gap-x-12 lg:px-10">
-                <div aria-hidden className="rounded-xl border border-[#F6F7EB]/35 bg-[#2E3234] bg-[radial-gradient(rgba(246,247,235,0.22)_1px,transparent_1px)] bg-[length:14px_14px]">
+                <div aria-hidden className="rounded-xl bg-[#18364B] bg-[radial-gradient(rgba(241,246,250,0.22)_1px,transparent_1px)] bg-[length:14px_14px]">
                   <svg
                     viewBox="0 0 200 200"
                     fill="none"
@@ -680,21 +679,21 @@ export function Approach() {
                 </div>
                 <div>
                   <p
-                    className={`${DISPLAY} text-[15px] font-semibold leading-[1.15] tracking-[-0.02em] text-[#F6F7EB] [text-wrap:balance] md:text-xl lg:text-[1.75rem] lg:tracking-[-0.03em]`}
+                    className={`${DISPLAY} text-[15px] font-semibold leading-[1.15] tracking-[-0.02em] text-[#18364B] [text-wrap:balance] md:text-xl lg:text-[1.75rem] lg:tracking-[-0.03em]`}
                   >
                     {lead}
                   </p>
-                  <p className="mt-2 text-[13.5px] leading-[1.6] text-[#F6F7EB]/90 [text-wrap:pretty] md:mt-3 md:text-[16px] md:leading-[1.65] lg:max-w-[46ch]">{body}</p>
+                  <p className="mt-2 text-[13.5px] leading-[1.6] text-[#18364B]/85 [text-wrap:pretty] md:mt-3 md:text-[16px] md:leading-[1.65] lg:max-w-[46ch]">{body}</p>
                   {/* what you hold at the end of this step */}
-                  <p className="mt-5 hidden items-center gap-3 border-t border-[#F6F7EB]/30 pt-3 text-sm md:flex">
-                    <span className={`${DISPLAY} text-xs font-bold uppercase tracking-[0.08em] text-[#FF8A75]`}>You get</span>
-                    <span className={`${DISPLAY} text-[15px] font-semibold tracking-[-0.01em] text-[#F6F7EB]`}>{out}</span>
+                  <p className="mt-5 hidden items-center gap-3 border-t border-[#18364B]/20 pt-3 text-sm md:flex">
+                    <span className={`${DISPLAY} rounded-full bg-[#A8B85A] px-2.5 py-1 text-xs font-bold uppercase tracking-[0.08em] text-[#18364B]`}>You get</span>
+                    <span className={`${DISPLAY} text-[15px] font-semibold tracking-[-0.01em] text-[#18364B]`}>{out}</span>
                   </p>
                 </div>
               </div>
 
               {/* dims the card as newer ones stack on top of it */}
-              <div data-shade aria-hidden className="pointer-events-none absolute inset-0 bg-[#141617] opacity-0" />
+              <div data-shade aria-hidden className="pointer-events-none absolute inset-0 bg-[#18364B] opacity-0" />
             </li>
           ))}
           {/* holds the finished stack on screen for a moment, so the last card is pinned like the others */}
