@@ -1,487 +1,473 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Bricolage_Grotesque, DM_Sans } from "next/font/google";
+import { Manrope } from "next/font/google";
 
-gsap.registerPlugin(ScrollTrigger);
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["500", "600", "800"],
+  display: "swap",
+  variable: "--font-hero-display",
+});
 
-const display = Bricolage_Grotesque({ subsets: ["latin"], display: "swap", variable: "--font-hero-display" });
-const body = DM_Sans({ subsets: ["latin"], display: "swap", variable: "--font-hero-body" });
-const DISPLAY = "font-[family-name:var(--font-hero-display)]";
+/* One font only. DISPLAY and MONO point to the same Manrope variable,
+   so Stats and Testimonials keep working without changes. */
+export const VARS = manrope.variable;
+export const DISPLAY = "font-[family-name:var(--font-hero-display)]";
+export const MONO = "font-[family-name:var(--font-hero-display)] tabular-nums";
+
+const HIDDEN = "opacity-0 motion-reduce:opacity-100";
+const SPRING = "ease-[cubic-bezier(.22,1,.36,1)]";
+const useIso = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /*
   Palette
-  Cream #F6F7EB · Vermilion #E94F37 · Charcoal #393E41
+  Obsidian #0B111B (bg) | Atlantic #253B56 (button border) | Ice Sheet #DFEAF5 (name, title)
+  Tangerine #FF895D (accent, grid dots) | Glacier #A8C8EB (grid lines, role, highlight) | Storm #657E9B (quiet)
+
+  Notes
+  - Refresh glitch fixes:
+    1. ASAD and KHAN are hidden in the markup too (HIDDEN), so the server HTML never flashes them
+       before GSAP moves them down.
+    2. The idle drift now starts the virtual pointer at its target instead of (0, 0),
+       so the mesh no longer gets yanked after about 1.5s.
+  - Grid animation logic is unchanged.
 */
 
-const HIDDEN = "opacity-0 motion-reduce:opacity-100";
+const LINE = "#A8C8EB";
+const ACCENT = "#FF895D";
 
-const GRAIN =
-  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")";
+type G = { T: number };
 
-/* ---------- Name: every letter slides up inside a mask ---------- */
+const rnd = (n: number) => {
+  const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return s - Math.floor(s);
+};
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
-function SplitLine({ text, dot }: { text: string; dot?: boolean }) {
-  return (
-    <span
-      aria-hidden
-      className="-mx-[0.06em] -mb-[0.2em] -mt-[0.1em] block overflow-hidden whitespace-nowrap px-[0.06em] pb-[0.2em] pt-[0.1em]"
-    >
-      {Array.from(text).map((ch, i) => (
-        <span key={i} data-ch className={`inline-block will-change-transform ${HIDDEN}`}>
-          {ch}
-        </span>
-      ))}
-      {dot && (
-        <span
-          data-dot
-          className={`ml-[0.04em] inline-block size-[0.14em] rounded-full bg-[#E94F37] ${HIDDEN}`}
-        />
-      )}
-    </span>
-  );
-}
+/* ---------- Spring-mesh grid that blooms out from the centre ---------- */
 
-/* ---------- Buttons ---------- */
+function GridCanvas({ g }: { g: React.MutableRefObject<G> }) {
+  const cv = useRef<HTMLCanvasElement>(null);
 
-function useMagnet(ref: React.RefObject<HTMLAnchorElement | null>, strength = 0.3) {
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const mm = gsap.matchMedia();
-    mm.add("(prefers-reduced-motion: no-preference) and (pointer: fine)", () => {
-      const qx = gsap.quickTo(el, "x", { duration: 0.6, ease: "power3.out" });
-      const qy = gsap.quickTo(el, "y", { duration: 0.6, ease: "power3.out" });
-      const move = (e: PointerEvent) => {
-        const r = el.getBoundingClientRect();
-        qx((e.clientX - (r.left + r.width / 2)) * strength);
-        qy((e.clientY - (r.top + r.height / 2)) * strength);
-      };
-      const leave = () => {
-        qx(0);
-        qy(0);
-      };
-      el.addEventListener("pointermove", move);
-      el.addEventListener("pointerleave", leave);
-      return () => {
-        el.removeEventListener("pointermove", move);
-        el.removeEventListener("pointerleave", leave);
-      };
+    const canvas = cv.current;
+    const host = canvas?.parentElement;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !host || !ctx) return;
+
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let w = 0;
+    let h = 0;
+    let nc = 0;
+    let nr = 0;
+    let minorA = 0.13;
+    let majorA = 0.34;
+    let xs: number[] = [];
+    let ys: number[] = [];
+    let ox = new Float32Array(0);
+    let oy = new Float32Array(0);
+    let vx = new Float32Array(0);
+    let vy = new Float32Array(0);
+    let vDelay: number[] = [];
+    let vDur: number[] = [];
+    let hDelay: number[] = [];
+    let hDur: number[] = [];
+    let visible = true;
+
+    const build = () => {
+      const r = host.getBoundingClientRect();
+      w = r.width;
+      h = r.height;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const phone = w < 768;
+      const cell = phone ? 46 : 40; // bigger cells on phones, so it never feels crowded
+      minorA = phone ? 0.08 : 0.12;
+      majorA = phone ? 0.24 : 0.3;
+      nc = Math.max(2, Math.round(w / cell));
+      nr = Math.max(2, Math.round(h / cell));
+      xs = Array.from({ length: nc + 1 }, (_, i) => (i * w) / nc);
+      ys = Array.from({ length: nr + 1 }, (_, j) => (j * h) / nr);
+      const N = (nc + 1) * (nr + 1);
+      ox = new Float32Array(N);
+      oy = new Float32Array(N);
+      vx = new Float32Array(N);
+      vy = new Float32Array(N);
+      // lines start at the centre and spread outwards
+      vDelay = xs.map((_, i) => (Math.abs(i - nc / 2) / (nc / 2)) * 1.1 + rnd(i + 1) * 0.25);
+      vDur = xs.map((_, i) => 1.1 + rnd(i + 50) * 0.4);
+      hDelay = ys.map((_, j) => 0.15 + (Math.abs(j - nr / 2) / (nr / 2)) * 1.1 + rnd(j + 100) * 0.25);
+      hDur = ys.map((_, j) => 1.2 + rnd(j + 150) * 0.4);
+    };
+    build();
+
+    let lw = w;
+    let lh = h;
+    const ro = new ResizeObserver(() => {
+      const r = host.getBoundingClientRect();
+      if (Math.abs(r.width - lw) > 1 || Math.abs(r.height - lh) > 80) {
+        build();
+        lw = w;
+        lh = h;
+      }
     });
-    return () => mm.revert();
-  }, [ref, strength]);
+    ro.observe(host);
+
+    let tx = 0;
+    let ty = 0;
+    let mx = 0;
+    let my = 0;
+    let pmx = 0;
+    let pmy = 0;
+    let cvx = 0;
+    let cvy = 0;
+    let moved = false;
+    let last = -1e9;
+    const waves: { x: number; y: number; t: number }[] = [];
+
+    const onMove = (e: PointerEvent) => {
+      const r = host.getBoundingClientRect();
+      tx = e.clientX - r.left;
+      ty = e.clientY - r.top;
+      last = performance.now();
+      if (!moved) {
+        moved = true;
+        mx = pmx = tx;
+        my = pmy = ty;
+      }
+    };
+    const onDown = (e: PointerEvent) => {
+      if ((e.target as HTMLElement).closest("a")) return;
+      const r = host.getBoundingClientRect();
+      if (e.clientY < r.top || e.clientY > r.bottom) return;
+      waves.push({ x: e.clientX - r.left, y: e.clientY - r.top, t: 0 });
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerdown", onDown, { passive: true });
+    const io = new IntersectionObserver(([e]) => (visible = e.isIntersecting));
+    io.observe(host);
+
+    /* physics */
+    const integrate = (time: number, dt: number, idle: boolean) => {
+      const R = w < 768 ? 150 : 200;
+      const LIMIT = 80;
+      const gain = idle ? 0.55 : 1;
+      const stride = nr + 1;
+
+      for (let i = 0; i <= nc; i++) {
+        for (let j = 0; j <= nr; j++) {
+          const k = i * stride + j;
+          const px = xs[i] + ox[k];
+          const py = ys[j] + oy[k];
+
+          if (moved) {
+            const dx = px - mx;
+            const dy = py - my;
+            const d = Math.hypot(dx, dy);
+            if (d < R) {
+              const f = (1 - d / R) ** 2 * gain;
+              vx[k] += (cvx * 0.16 + (dx / (d || 1)) * 0.9) * f * dt;
+              vy[k] += (cvy * 0.16 + (dy / (d || 1)) * 0.9) * f * dt;
+            }
+          }
+
+          vx[k] += Math.sin(time * 0.7 + j * 0.35 + i * 0.12) * 0.012 * dt;
+          vy[k] += Math.cos(time * 0.6 + i * 0.3 + j * 0.1) * 0.012 * dt;
+
+          let ax = 0;
+          let ay = 0;
+          let c = 0;
+          if (i > 0) { ax += ox[k - stride]; ay += oy[k - stride]; c++; }
+          if (i < nc) { ax += ox[k + stride]; ay += oy[k + stride]; c++; }
+          if (j > 0) { ax += ox[k - 1]; ay += oy[k - 1]; c++; }
+          if (j < nr) { ax += ox[k + 1]; ay += oy[k + 1]; c++; }
+          vx[k] += (-ox[k] * 0.035 + (ax / c - ox[k]) * 0.12) * dt;
+          vy[k] += (-oy[k] * 0.035 + (ay / c - oy[k]) * 0.12) * dt;
+        }
+      }
+
+      for (let n = waves.length - 1; n >= 0; n--) {
+        const wv = waves[n];
+        wv.t += 0.0167 * dt;
+        if (wv.t > 2.8) {
+          waves.splice(n, 1);
+          continue;
+        }
+        const front = wv.t * 640;
+        const fade = Math.exp(-wv.t * 1.3);
+        for (let i = 0; i <= nc; i++) {
+          for (let j = 0; j <= nr; j++) {
+            const k = i * stride + j;
+            const dx = xs[i] + ox[k] - wv.x;
+            const dy = ys[j] + oy[k] - wv.y;
+            const d = Math.hypot(dx, dy) || 1;
+            const e = Math.exp(-(((d - front) / 38) ** 2)) * fade * 2.4 * dt;
+            vx[k] += (dx / d) * e;
+            vy[k] += (dy / d) * e;
+          }
+        }
+      }
+
+      const damp = Math.pow(0.9, dt);
+      for (let k = 0; k < vx.length; k++) {
+        vx[k] *= damp;
+        vy[k] *= damp;
+        ox[k] = Math.max(-LIMIT, Math.min(LIMIT, ox[k] + vx[k] * dt));
+        oy[k] = Math.max(-LIMIT, Math.min(LIMIT, oy[k] + vy[k] * dt));
+      }
+    };
+
+    const step = (time: number, dt: number) => {
+      const idle = performance.now() - last > 2200;
+      if (idle && g.current.T > 1.5) {
+        tx = w * (0.5 + 0.33 * Math.sin(time * 0.55));
+        ty = h * (0.5 + 0.28 * Math.sin(time * 0.77 + 1.3));
+        // start the virtual pointer at its target, so the mesh is not yanked from (0, 0)
+        if (!moved) {
+          moved = true;
+          mx = pmx = tx;
+          my = pmy = ty;
+        }
+      }
+      if (moved) {
+        const k = 1 - Math.exp(-dt * 0.11);
+        mx += (tx - mx) * k;
+        my += (ty - my) * k;
+        const vk = 1 - Math.exp(-dt * 0.3);
+        cvx += ((mx - pmx) / dt - cvx) * vk;
+        cvy += ((my - pmy) / dt - cvy) * vk;
+      }
+      pmx = mx;
+      pmy = my;
+
+      const n = Math.max(1, Math.ceil(dt / 0.8));
+      const sub = dt / n;
+      for (let s = 0; s < n; s++) integrate(time, sub, idle);
+    };
+
+    /* drawing */
+    const pointAt = (vertical: boolean, line: number, f: number): [number, number] => {
+      const n = vertical ? nr : nc;
+      const m = Math.min(n - 1, Math.floor(f));
+      const t = f - m;
+      const at = (q: number): [number, number] => {
+        const k = vertical ? line * (nr + 1) + q : q * (nr + 1) + line;
+        const i = vertical ? line : q;
+        const j = vertical ? q : line;
+        return [xs[i] + ox[k], ys[j] + oy[k]];
+      };
+      const [ax, ay] = at(m);
+      const [bx, by] = at(m + 1);
+      return [ax + (bx - ax) * t, ay + (by - ay) * t];
+    };
+
+    const trace = (vertical: boolean, line: number, a: number, b: number) => {
+      const n = vertical ? nr : nc;
+      const fa = a * n;
+      const fb = b * n;
+      const pts: number[] = [];
+      pts.push(...pointAt(vertical, line, fa));
+      for (let m = Math.floor(fa) + 1; m < fb; m++) pts.push(...pointAt(vertical, line, m));
+      pts.push(...pointAt(vertical, line, fb));
+      ctx.moveTo(pts[0], pts[1]);
+      for (let p = 2; p < pts.length - 2; p += 2) {
+        ctx.quadraticCurveTo(pts[p], pts[p + 1], (pts[p] + pts[p + 2]) / 2, (pts[p + 1] + pts[p + 3]) / 2);
+      }
+      ctx.lineTo(pts[pts.length - 2], pts[pts.length - 1]);
+    };
+
+    const draw = () => {
+      ctx.clearRect(0, 0, w, h);
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.strokeStyle = LINE;
+      const { T } = g.current;
+      const heads: [number, number][] = [];
+
+      const line = (vertical: boolean, idx: number, delay: number, dur: number) => {
+        const raw = clamp01((T - delay) / dur);
+        if (raw <= 0) return;
+        const p = easeOut(raw);
+        const settle = clamp01((T - delay - dur) / 1.2);
+        const base = idx % 4 === 0 ? majorA : minorA;
+        ctx.globalAlpha = base + 0.4 * (1 - settle);
+        ctx.lineWidth = 1 + 0.25 * (1 - settle);
+        ctx.beginPath();
+        trace(vertical, idx, 0.5 - p / 2, 0.5 + p / 2);
+        ctx.stroke();
+        if (p < 1) {
+          const n = vertical ? nr : nc;
+          heads.push(pointAt(vertical, idx, (0.5 - p / 2) * n), pointAt(vertical, idx, (0.5 + p / 2) * n));
+        }
+      };
+      for (let i = 0; i <= nc; i++) line(true, i, vDelay[i], vDur[i]);
+      for (let j = 0; j <= nr; j++) line(false, j, hDelay[j], hDur[j]);
+
+      ctx.fillStyle = ACCENT;
+      ctx.globalAlpha = 0.95;
+      heads.forEach(([x, y]) => ctx.fillRect(x - 2.5, y - 2.5, 5, 5));
+
+      // markers light up only where the cloth is moving
+      const live = clamp01((T - 1.5) / 1.5);
+      if (live > 0) {
+        const stride = nr + 1;
+        for (let i = 0; i <= nc; i++) {
+          for (let j = 0; j <= nr; j++) {
+            const k = i * stride + j;
+            const disp = Math.hypot(ox[k], oy[k]);
+            if (disp < 2) continue;
+            const s = Math.min(6, 1 + disp * 0.1);
+            ctx.globalAlpha = Math.min(1, disp / 16) * live;
+            ctx.fillRect(xs[i] + ox[k] - s / 2, ys[j] + oy[k] - s / 2, s, s);
+          }
+        }
+      }
+      ctx.globalAlpha = 1;
+    };
+
+    const tick = (time: number, deltaTime: number) => {
+      if (!visible) return;
+      const dt = Math.min(3, Math.max(0.2, deltaTime / 16.667));
+      if (!reduce) step(time, dt);
+      draw();
+    };
+    gsap.ticker.add(tick);
+
+    return () => {
+      gsap.ticker.remove(tick);
+      io.disconnect();
+      ro.disconnect();
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerdown", onDown);
+    };
+  }, [g]);
+
+  return <canvas ref={cv} aria-hidden className="pointer-events-none absolute inset-0 size-full" />;
 }
 
-function PrimaryButton({ href, children }: { href: string; children: React.ReactNode }) {
-  const ref = useRef<HTMLAnchorElement>(null);
-  useMagnet(ref);
-  return (
-    <a
-      ref={ref}
-      href={href}
-      className="group/cta relative inline-flex w-full items-center justify-between gap-2 overflow-hidden rounded-full bg-[#E94F37] py-1 pl-4 pr-1 outline-offset-4 focus-visible:outline-2 focus-visible:outline-[#393E41] md:w-fit md:justify-start md:gap-4 md:py-2 md:pl-7 md:pr-2"
-    >
-      <span
-        aria-hidden
-        className="absolute inset-0 translate-y-full bg-[#393E41] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/cta:translate-y-0 group-focus-visible/cta:translate-y-0 motion-reduce:transition-none"
-      />
-      <span className={`${DISPLAY} relative whitespace-nowrap text-[13px] font-semibold text-[#F6F7EB] md:text-lg`}>
-        {children}
-      </span>
-      <span className="relative grid size-9 shrink-0 place-items-center rounded-full bg-[#F6F7EB] text-[#393E41] transition-colors duration-500 group-hover/cta:bg-[#E94F37] group-hover/cta:text-[#F6F7EB] md:size-11">
-        <svg
-          viewBox="0 0 24 24"
-          className="size-4 -rotate-45 transition-transform duration-500 ease-out group-hover/cta:rotate-0 motion-reduce:transition-none md:size-5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M5 12h14M13 6l6 6-6 6" />
-        </svg>
-      </span>
-    </a>
-  );
-}
+/* ---------- Buttons: icon sits right next to the label ---------- */
 
-function GhostButton({ href, children, download }: { href: string; children: React.ReactNode; download?: boolean }) {
-  const ref = useRef<HTMLAnchorElement>(null);
-  useMagnet(ref, 0.22);
+function Btn({ href, children, ghost, download }: { href: string; children: React.ReactNode; ghost?: boolean; download?: boolean }) {
+  const icon = `size-4 shrink-0 transition-transform duration-500 ${SPRING}`;
   return (
     <a
-      ref={ref}
       href={href}
       download={download}
-      className="group/ghost relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-[#393E41] px-4 py-2.5 outline-offset-4 focus-visible:outline-2 focus-visible:outline-[#E94F37] md:w-fit md:gap-3 md:px-7 md:py-3.5"
+      className={`group inline-flex h-12 w-fit items-center justify-center gap-2 whitespace-nowrap rounded-full px-6 text-sm font-semibold leading-none transition-transform duration-500 ${SPRING} hover:-translate-y-0.5 active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FF895D] md:h-14 md:px-8 md:text-base ${
+        ghost
+          ? "border border-[#253B56] bg-[#0B111B]/60 text-[#DFEAF5] hover:border-[#657E9B]"
+          : "bg-[#FF895D] text-[#0B111B]"
+      }`}
     >
-      <span
-        aria-hidden
-        className="absolute inset-0 -translate-y-full bg-[#393E41] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/ghost:translate-y-0 group-focus-visible/ghost:translate-y-0 motion-reduce:transition-none"
-      />
-      <span
-        className={`${DISPLAY} relative text-[13px] font-semibold text-[#393E41] transition-colors duration-500 group-hover/ghost:text-[#F6F7EB] md:text-lg`}
-      >
-        {children}
-      </span>
-      <svg
-        viewBox="0 0 24 24"
-        className="relative size-4 text-[#393E41] transition-all duration-500 group-hover/ghost:translate-y-0.5 group-hover/ghost:text-[#F6F7EB] motion-reduce:transition-none md:size-5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M12 4v12M6 11l6 6 6-6M5 20h14" />
-      </svg>
+      {children}
+      {ghost ? (
+        <svg viewBox="0 0 24 24" className={`${icon} group-hover:translate-y-0.5`} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M12 4v11M7 10.5l5 5 5-5M5 20h14" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" className={`${icon} group-hover:translate-x-0.5`} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
+      )}
     </a>
-  );
-}
-
-/* ---------- Stats: 2x2 grid on phone, 4 across on desktop ---------- */
-
-const ICONS = {
-  code: <path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16" />,
-  folder: <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />,
-  award: (
-    <>
-      <circle cx="12" cy="9" r="6" />
-      <path d="M8.5 14.5L7 22l5-3 5 3-1.5-7.5" />
-    </>
-  ),
-  cap: (
-    <>
-      <path d="M2 9l10-5 10 5-10 5z" />
-      <path d="M6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5" />
-    </>
-  ),
-};
-
-const STATS: { to: number; suffix: string; label: string; icon: keyof typeof ICONS }[] = [
-  { to: 700, suffix: "+", label: "LeetCode solved", icon: "code" },
-  { to: 6, suffix: "+", label: "GitHub projects", icon: "folder" },
-  { to: 4, suffix: "+", label: "Certifications", icon: "award" },
-  { to: 2027, suffix: "", label: "Graduating", icon: "cap" },
-];
-
-function Stats() {
-  const ref = useRef<HTMLDListElement>(null);
-
-  useEffect(() => {
-    const root = ref.current;
-    if (!root) return;
-    const mm = gsap.matchMedia();
-
-    mm.add("(prefers-reduced-motion: no-preference)", () => {
-      const items = Array.from(root.querySelectorAll<HTMLElement>("[data-stat]"));
-      const counters = Array.from(root.querySelectorAll<HTMLElement>("[data-count]"));
-
-      gsap.fromTo(
-        items,
-        { opacity: 0, y: 36 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.9,
-          ease: "power3.out",
-          stagger: 0.1,
-          scrollTrigger: { trigger: root, start: "top 92%", once: true },
-        }
-      );
-
-      counters.forEach((el) => {
-        const to = Number(el.dataset.to);
-        const from = to > 1000 ? to - 25 : 0;
-        const o = { v: from };
-        el.textContent = String(from);
-        gsap.to(o, {
-          v: to,
-          duration: 2.2,
-          ease: "expo.out",
-          onUpdate: () => {
-            el.textContent = String(Math.round(o.v));
-          },
-          scrollTrigger: { trigger: root, start: "top 92%", once: true },
-        });
-      });
-
-      return () => {
-        counters.forEach((el) => (el.textContent = el.dataset.to ?? ""));
-      };
-    });
-
-    return () => mm.revert();
-  }, []);
-
-  return (
-    <dl ref={ref} className="grid grid-cols-2 md:grid-cols-4">
-      {STATS.map((s, i) => (
-        <div
-          key={s.label}
-          data-stat
-          className={`flex min-w-0 flex-col gap-3 border-[#393E41]/25 py-4 md:gap-3 md:py-2 md:pl-8 md:first:pl-0 ${HIDDEN} ${
-            i % 2 === 1 ? "border-l pl-4" : ""
-          } ${i > 1 ? "border-t md:border-t-0" : ""} ${i > 0 ? "md:border-l" : ""}`}
-        >
-          <dt className="flex min-w-0 items-center gap-1.5 text-[#393E41]/70 md:gap-2">
-            <svg
-              viewBox="0 0 24 24"
-              aria-hidden
-              className="size-3.5 shrink-0 text-[#E94F37] md:size-5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              {ICONS[s.icon]}
-            </svg>
-            <span className="truncate whitespace-nowrap text-[10px] font-medium uppercase leading-none tracking-[0.08em] md:text-sm md:normal-case md:tracking-normal">
-              {s.label}
-            </span>
-          </dt>
-          <dd
-            className={`${DISPLAY} flex items-start text-[clamp(2.5rem,13vw,3.5rem)] font-semibold leading-none tracking-[-0.05em] text-[#393E41] tabular-nums md:text-[clamp(2.75rem,7vw,5.5rem)]`}
-          >
-            <span data-count data-to={s.to}>
-              {s.to}
-            </span>
-            {s.suffix && <span className="text-[#E94F37]">{s.suffix}</span>}
-          </dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
-/* ---------- Marquee: plain, steady, one direction ---------- */
-
-const STACK = ["Java", "Spring Boot", "REST APIs", "PostgreSQL", "JWT Auth", "Microservices", "Redis", "Docker"];
-
-function Marquee() {
-  const track = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = track.current;
-    if (!el) return;
-    const mm = gsap.matchMedia();
-
-    mm.add("(prefers-reduced-motion: no-preference)", () => {
-      const tween = gsap.to(el, { xPercent: -50, duration: 40, ease: "none", repeat: -1 });
-      if (typeof IntersectionObserver === "undefined") return () => tween.kill();
-      const io = new IntersectionObserver(([e]) => (e.isIntersecting ? tween.play() : tween.pause()));
-      io.observe(el);
-      return () => {
-        io.disconnect();
-        tween.kill();
-      };
-    });
-
-    return () => mm.revert();
-  }, []);
-
-  return (
-    <div className="overflow-hidden bg-[#393E41] py-3 md:py-4">
-      <span className="sr-only">{STACK.join(", ")}</span>
-      <div ref={track} aria-hidden className="flex w-max">
-        {[0, 1].map((k) => (
-          <ul key={k} className="flex shrink-0 items-center">
-            {STACK.map((s) => (
-              <li
-                key={`${k}-${s}`}
-                className={`${DISPLAY} flex items-center gap-4 pr-4 text-lg font-medium leading-none text-[#F6F7EB] md:gap-8 md:pr-8 md:text-3xl`}
-              >
-                {s}
-                <span className="text-[#E94F37]">/</span>
-              </li>
-            ))}
-          </ul>
-        ))}
-      </div>
-    </div>
   );
 }
 
 /* ---------- Hero ---------- */
 
-export default function Hero() {
+export default function Hero3() {
   const root = useRef<HTMLElement>(null);
+  const g = useRef<G>({ T: 0 });
 
-  useEffect(() => {
+  useIso(() => {
     const el = root.current;
     if (!el) return;
     const q = gsap.utils.selector(el);
     const mm = gsap.matchMedia();
 
     mm.add("(prefers-reduced-motion: no-preference)", () => {
-      const letters = q("[data-ch]");
-      const dot = q("[data-dot]");
-      const fade = q("[data-fade]");
-      const rule = q("[data-rule]");
+      // opacity: 1 overrides the HIDDEN class, so the words show up only once they are in position below the mask
+      gsap.set(q("[data-line]"), { yPercent: 105, opacity: 1 });
+      gsap.set(q("[data-fade]"), { opacity: 0, y: 12 });
 
-      gsap.set(letters, { yPercent: 125, opacity: 1 });
-      gsap.set(dot, { scale: 0, opacity: 1, transformOrigin: "50% 100%" });
-      gsap.set(fade, { opacity: 0, y: 24 });
-      gsap.set(rule, { scaleX: 0, opacity: 1, transformOrigin: "0% 50%" });
+      const tl = gsap.timeline({ delay: 0.1 });
+      tl.to(g.current, { T: 4.4, duration: 4.4, ease: "none" }, 0) // grid blooms out from the centre
+        .to(q("[data-line]"), { yPercent: 0, duration: 1, ease: "expo.out", stagger: 0.1 }, 0)
+        .to(q("[data-fade]"), { opacity: 1, y: 0, duration: 0.7, ease: "power3.out", stagger: 0.08 }, 0.5);
 
-      gsap
-        .timeline({ delay: 0.1, defaults: { overwrite: "auto" } })
-        .to(letters, { yPercent: 0, duration: 1.4, ease: "expo.out", stagger: 0.055 }, 0)
-        .to(dot, { scale: 1, duration: 0.8, ease: "back.out(2.2)" }, 0.95)
-        .to(rule, { scaleX: 1, duration: 1.4, ease: "power3.inOut" }, 0.5)
-        .to(fade, { opacity: 1, y: 0, duration: 0.9, ease: "power3.out", stagger: 0.1 }, 0.7);
+      return () => {
+        tl.kill();
+      };
+    });
 
-      // scroll: the two name lines drift apart, the copy softens
-      const scroll = { trigger: el, start: "top top", end: "bottom top", scrub: 0.6, invalidateOnRefresh: true };
-      gsap.to(q("[data-name-a]"), { xPercent: -14, ease: "none", scrollTrigger: scroll });
-      gsap.to(q("[data-name-b]"), { xPercent: 12, ease: "none", scrollTrigger: scroll });
-      gsap.to(q("[data-copy]"), { y: -40, opacity: 0.35, ease: "none", scrollTrigger: scroll });
+    mm.add("(prefers-reduced-motion: reduce)", () => {
+      g.current.T = 10;
     });
 
     return () => mm.revert();
   }, []);
 
   return (
-    <>
-      <header
-        ref={root}
-        id="top"
-        className={`${display.variable} ${body.variable} relative isolate flex min-h-[100svh] flex-col overflow-clip bg-[#F6F7EB] font-[family-name:var(--font-hero-body)] text-[#393E41] antialiased`}
-      >
-        {/* grain only */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-          <div className="absolute inset-0 opacity-[0.07] mix-blend-multiply" style={{ backgroundImage: GRAIN }} />
-        </div>
-
-        <div className="relative z-10 flex flex-1 flex-col px-5 pb-2 pt-12 md:px-12 md:pb-0 md:pt-14 lg:px-16">
-          {/* the name */}
-          <div className="flex flex-col justify-center pb-6 md:flex-1 md:py-10">
-            <h1
-              aria-label="Asad Khan"
-              className={`${DISPLAY} flex select-none flex-col text-[33vw] font-bold leading-[0.82] tracking-[-0.06em] md:text-[17vw]`}
-            >
-              <div data-name-a>
-                <SplitLine text="Asad" />
-              </div>
-              <div data-name-b className="ml-[6vw] md:ml-[16vw]">
-                <SplitLine text="Khan" dot />
-              </div>
-            </h1>
-          </div>
-
-          <div data-rule className={`h-[2px] origin-left bg-[#393E41] ${HIDDEN}`} />
-
-          {/* copy + buttons: on phone the buttons sit at the bottom of this block */}
-          <div
-            data-copy
-            className="flex flex-1 flex-col gap-8 py-5 md:flex-none md:flex-row md:items-center md:justify-between md:gap-16 md:py-10"
-          >
-            <p
-              data-fade
-              className={`${DISPLAY} max-w-[30ch] text-[1.2rem] font-medium leading-[1.3] tracking-[-0.02em] md:max-w-[34ch] md:text-[clamp(1.35rem,2.4vw,2rem)] ${HIDDEN}`}
-            >
-              Backend developer building fast APIs, secure auth and clean data models in Java and Spring Boot, so the
-              products on top can scale without breaking.
-            </p>
-            <div
-              data-fade
-              className={`mt-auto grid grid-cols-2 gap-2.5 md:mt-0 md:flex md:flex-wrap md:items-center md:gap-4 ${HIDDEN}`}
-            >
-              <PrimaryButton href="#projects">View projects</PrimaryButton>
-              <GhostButton href="/resume.pdf" download>
-                Resume
-              </GhostButton>
-            </div>
-          </div>
-
-          <div data-rule className={`h-px origin-left bg-[#393E41]/25 ${HIDDEN}`} />
-          <div className="md:py-10">
-            <Stats />
-          </div>
-        </div>
-      </header>
-
-      <Marquee />
-    </>
-  );
-}
-
-/* ---------- Testimonials (placeholders: replace before publishing) ---------- */
-
-const TESTIMONIALS = [
-  { quote: "Replace this with a real quote from a client or teammate.", name: "Name", role: "Role, Company" },
-  { quote: "Keep it to one or two sentences about the work you delivered.", name: "Name", role: "Role, Company" },
-  { quote: "Short, specific and honest reads best.", name: "Name", role: "Role, Company" },
-];
-
-export function Testimonials() {
-  const ref = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const mm = gsap.matchMedia();
-    mm.add("(prefers-reduced-motion: no-preference)", () => {
-      const cards = gsap.utils.toArray<HTMLElement>("[data-card]", el);
-      gsap.fromTo(
-        cards,
-        { opacity: 0, y: 70, rotate: (i: number) => (i % 2 ? 2 : -2) },
-        {
-          opacity: 1,
-          y: 0,
-          rotate: 0,
-          duration: 1,
-          ease: "power3.out",
-          stagger: 0.15,
-          scrollTrigger: { trigger: el, start: "top 75%", once: true },
-        }
-      );
-      gsap.fromTo(
-        "[data-title]",
-        { xPercent: 8 },
-        { xPercent: -8, ease: "none", scrollTrigger: { trigger: el, start: "top bottom", end: "bottom top", scrub: 0.6 } }
-      );
-    });
-    return () => mm.revert();
-  }, []);
-
-  return (
-    <section
-      ref={ref}
-      id="testimonials"
-      aria-labelledby="testimonials-title"
-      className={`${display.variable} ${body.variable} overflow-hidden bg-[#F6F7EB] px-5 py-16 font-[family-name:var(--font-hero-body)] text-[#393E41] antialiased md:px-12 md:py-24 lg:px-16`}
+    <header
+      ref={root}
+      id="top"
+      className={`${VARS} ${DISPLAY} relative isolate flex min-h-[100svh] flex-col justify-between gap-10 overflow-clip bg-[#0B111B] px-5 pb-10 pt-24 text-[#DFEAF5] antialiased selection:bg-[#FF895D] selection:text-[#0B111B] md:justify-end md:gap-[min(4vw,5vh)] md:px-12 md:pb-12 md:pt-14 lg:px-16`}
     >
-      <h2
-        id="testimonials-title"
-        data-title
-        className={`${DISPLAY} whitespace-nowrap text-[clamp(3.5rem,12vw,9rem)] font-bold leading-none tracking-[-0.05em]`}
-      >
-        Kind words<span className="text-[#E94F37]">.</span>
-      </h2>
+      <GridCanvas g={g} />
 
-      <div className="mt-10 grid gap-4 md:mt-14 md:grid-cols-3 md:gap-6">
-        {TESTIMONIALS.map((t, i) => (
-          <figure
-            key={i}
-            data-card
-            className={`flex flex-col justify-between rounded-3xl p-6 md:min-h-[320px] md:p-8 ${
-              i === 1 ? "bg-[#E94F37] text-[#F6F7EB]" : "bg-[#393E41] text-[#F6F7EB]"
-            }`}
+      {/* Name: ASAD left, KHAN right. Role and status sit beside KHAN on desktop. */}
+      <h1
+        aria-label="Asad Khan"
+        className="relative z-10 flex select-none flex-col gap-2 text-[27vw] font-extrabold leading-[0.82] tracking-[-0.05em] md:gap-0 md:pr-14 md:text-[length:min(17vw,22vh)]"
+      >
+        <span aria-hidden className="block self-start overflow-hidden pb-[0.04em]">
+          <span data-line className={`block will-change-transform ${HIDDEN}`}>ASAD</span>
+        </span>
+
+        <span className="flex flex-col gap-6 md:w-[min(7.2em,100%)] md:flex-row md:items-end md:justify-between">
+          <span
+            data-fade
+            className={`order-2 flex flex-col gap-3 text-base font-semibold leading-none tracking-normal md:order-1 md:pb-[1.6vw] md:text-[length:min(1.7vw,2.6vh)] ${HIDDEN}`}
           >
-            <span aria-hidden className={`${DISPLAY} text-6xl font-bold leading-none md:text-7xl ${i === 1 ? "text-[#393E41]" : "text-[#E94F37]"}`}>
-              “
+            <span className="whitespace-nowrap text-[#A8C8EB]">
+              Backend developer <span className="text-[#657E9B]">and freelancer</span>
             </span>
-            <blockquote className="mt-3 text-lg leading-[1.45] md:mt-4 md:text-xl">{t.quote}</blockquote>
-            <figcaption className="mt-6 text-sm opacity-80 md:mt-8">
-              {t.name} / {t.role}
-            </figcaption>
-          </figure>
-        ))}
+            <span className="inline-flex items-center gap-2 text-[0.8em] font-medium text-[#657E9B]">
+              <span aria-hidden className="size-1.5 rounded-full bg-[#FF895D]" />
+              Open to work
+            </span>
+          </span>
+
+          <span aria-hidden className="order-1 block self-end overflow-hidden pb-[0.04em] md:order-2">
+            <span data-line className={`block will-change-transform ${HIDDEN}`}>KHAN</span>
+          </span>
+        </span>
+      </h1>
+
+      {/* Title and actions */}
+      <div className="relative z-10 flex flex-col gap-8 md:flex-row md:items-end md:justify-between md:gap-12 md:pr-14">
+        <p
+          data-fade
+          className={`max-w-[24ch] text-[length:clamp(1.6rem,7vw,2.1rem)] font-semibold leading-[1.12] tracking-[-0.03em] text-[#DFEAF5] md:max-w-[28ch] md:text-[length:min(2.9vw,5vh)] md:leading-[1.1] ${HIDDEN}`}
+        >
+          I build the <span className="text-[#A8C8EB]">part of the product</span> nobody sees, and make sure it never lets anyone down.
+        </p>
+
+        <div data-fade className={`flex flex-row flex-wrap gap-3 ${HIDDEN}`}>
+          <Btn href="#projects">View projects</Btn>
+          <Btn href="/resume.pdf" download ghost>
+            Resume
+          </Btn>
+        </div>
       </div>
-    </section>
+    </header>
   );
 }
+
+/* Keep your existing Stats and Testimonials components below this line, unchanged.
+   They use VARS, DISPLAY and MONO, which are exported from this file. */

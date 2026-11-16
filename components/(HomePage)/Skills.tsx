@@ -97,27 +97,31 @@ export function Skills() {
         </div>
 
         {/* Rows */}
-        <ul className="mt-14 flex flex-col gap-12 md:mt-24 md:gap-14">
-          {DATA.groups.map((g, i) => (
-            <li key={g.title} className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)] md:gap-16">
-              <div data-fade className={`flex items-baseline gap-3 md:gap-4 ${HIDDEN}`}>
-                <span className="text-sm font-extrabold tabular-nums tracking-[-0.02em] text-[#A8C8EB] md:text-sm md:font-semibold md:tracking-normal">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <h3 className="text-[1.5rem] font-extrabold leading-[1] tracking-[-0.045em] text-[#DFEAF5] md:text-[length:min(2.4vw,4.2vh)]">
-                  {g.title}
-                </h3>
-              </div>
+{/* Rows: dashed line between groups */}
+<ul className="mt-14 flex flex-col divide-y divide-dashed divide-[#253B56] md:mt-24">
+  {DATA.groups.map((g, i) => (
+    <li
+      key={g.title}
+      className="grid gap-3 py-8 first:pt-0 last:pb-0 md:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)] md:gap-16 md:py-10"
+    >
+      <div data-fade className={`flex items-baseline gap-3 md:gap-4 ${HIDDEN}`}>
+        <span className="text-sm font-extrabold tabular-nums tracking-[-0.02em] text-[#A8C8EB] md:text-sm md:font-semibold md:tracking-normal">
+          {String(i + 1).padStart(2, "0")}
+        </span>
+        <h3 className="text-[1.5rem] font-extrabold leading-[1] tracking-[-0.045em] text-[#DFEAF5] md:text-[length:min(2.4vw,4.2vh)]">
+          {g.title}
+        </h3>
+      </div>
 
-              <p
-                data-fade
-                className={`max-w-[34ch] pl-[2.1rem] text-[15px] font-medium leading-[1.7] tracking-[-0.01em] text-[#A8C8EB]/70 md:max-w-none md:pl-0 md:text-[length:min(1.5vw,2.8vh)] md:leading-[1.6] md:tracking-[-0.02em] md:text-[#DFEAF5]/80 ${HIDDEN}`}
-              >
-                {g.items.join(", ")}
-              </p>
-            </li>
-          ))}
-        </ul>
+      <p
+        data-fade
+        className={`max-w-[34ch] pl-[2.1rem] text-[15px] font-medium leading-[1.7] tracking-[-0.01em] text-[#A8C8EB]/70 md:max-w-none md:pl-0 md:text-[length:min(1.5vw,2.8vh)] md:leading-[1.6] md:tracking-[-0.02em] md:text-[#DFEAF5]/80 ${HIDDEN}`}
+      >
+        {g.items.join(", ")}
+      </p>
+    </li>
+  ))}
+</ul>
       </div>
     </section>
   );

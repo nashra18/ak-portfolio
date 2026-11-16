@@ -9,6 +9,7 @@
  * Tangerine #FF895D (accent) | Glacier #A8C8EB (highlights) | Storm #657E9B (quiet text)
  *
  * Type scale (one font, three weights): 800 titles and numbers, 600 headline, 500 body.
+ * A thin dashed line separates the text from the stats, same as Skills and Education.
  * Motion: one soft fade-up per block when it enters the screen. Nothing else moves.
  * Layout: portrait on the left, text on the right, on every screen size.
  */
@@ -180,7 +181,7 @@ export default function About() {
       id="about"
       className={`${manrope.variable} ${DISPLAY} relative isolate overflow-clip bg-[#0B111B] text-[#DFEAF5] antialiased selection:bg-[#FF895D] selection:text-[#0B111B]`}
     >
-      <div className="mx-auto flex w-full max-w-[90rem] flex-col gap-10 px-5 pb-16 pt-32 md:block md:px-12 md:pb-4 md:pt-36 lg:px-16 lg:pb-[1.5vw]">
+      <div className="mx-auto flex w-full max-w-[90rem] flex-col gap-10 px-5 pb-20 pt-32 md:block md:px-12 md:pb-28 md:pt-36 lg:px-16">
         {/* Title: one line */}
         <h2
           data-fade
@@ -211,7 +212,7 @@ export default function About() {
               <Hi text={DATA.intro} words={["backends", "AI"]} className="text-[#A8C8EB]" />
             </p>
 
-            <p data-fade className={`max-w-[44ch] text-[14px] font-medium leading-[1.6] text-[#657E9B] sm:text-base md:text-lg ${HIDDEN}`}>
+            <p data-fade className={`max-w-[44ch] text-[14px] font-medium leading-[1.6] text-[#A8C8EB]/70 sm:text-base md:text-lg ${HIDDEN}`}>
               {DATA.description}
             </p>
 
@@ -222,13 +223,13 @@ export default function About() {
               </button>
             </div>
 
-            {/* Desktop only: stats sit right under the button, in the text column */}
-            <Stats className="relative z-10 hidden md:mt-4 md:grid md:grid-cols-3 md:gap-8 xl:mt-6 xl:gap-10" />
+            {/* Desktop only: dashed line, then stats, inside the text column */}
+            <Stats className="relative z-10 hidden border-t border-dashed border-[#253B56] md:mt-6 md:grid md:grid-cols-3 md:gap-8 md:pt-8 xl:mt-8 xl:gap-10" />
           </div>
         </div>
 
-        {/* Phone only: stats stay in their original place below the grid */}
-        <Stats className="relative z-10 mt-[calc(10vw-2rem)] grid grid-cols-3 gap-4 md:hidden" />
+        {/* Phone only: dashed line, then stats below the grid */}
+        <Stats className="relative z-10 grid grid-cols-3 gap-4 border-t border-dashed border-[#253B56] pt-8 md:hidden" />
       </div>
 
       <AboutModal open={open} onClose={() => setOpen(false)} />

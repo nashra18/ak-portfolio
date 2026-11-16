@@ -1,36 +1,42 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Bricolage_Grotesque, DM_Sans } from "next/font/google";
+/**
+ * Approach section, in the Milestones card theme. Self-contained.
+ * Needs: next (next/font), Tailwind. No gsap.
+ *
+ * Palette
+ * Obsidian #0B111B (section bg, diagram panel) | Atlantic #253B56 (card edge)
+ * Card fill #142030 (Atlantic at 35% over Obsidian, solid so stacked cards never show through each other)
+ * Ice Sheet #DFEAF5 (titles, lit nodes) | Glacier #A8C8EB (numbers, targets in the diagrams)
+ * Storm #657E9B (intro, labels) | Tangerine #FF895D (request trail, selection)
+ *
+ * Five steps as stacking cards, each with a small wiring diagram.
+ * Layout and stacking are unchanged. Motion: masked words rise once, the gauge fades in,
+ * each diagram draws itself once when its card arrives, then a small request loops through it.
+ */
 
-gsap.registerPlugin(ScrollTrigger);
+import { Manrope } from "next/font/google";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
-const display = Bricolage_Grotesque({ subsets: ["latin"], display: "swap", variable: "--font-approach-display" });
-const body = DM_Sans({ subsets: ["latin"], display: "swap", variable: "--font-approach-body" });
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["500", "600", "800"],
+  display: "swap",
+  variable: "--font-approach-display",
+});
+
 const DISPLAY = "font-[family-name:var(--font-approach-display)]";
+const useIso = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
-/*
-  My approach: five steps as stacking cards, each with a small wiring diagram.
-  Same theme as the About and Projects sections.
+/* Card: same soft dark blue and thin edge as Milestones. The fill is solid because the cards overlap. */
+const CARD = "bg-[#142030] border border-[#253B56]";
 
-  Palette
-  Frost       #F1F6FA  section background, lit nodes, head of the request, text on cards
-  Iced Denim  #4F91C9  accents on the Frost background (gauge arc), filled targets in the diagrams
-  Pistachio   #A8B85A  number and label pills on the cards, request trail inside the diagrams
-  Deep Fjord  #18364B  text, and the diagram panel on each card
-  Ice Tint    #DCE8F3  card surface
-
-  Layout, stacking and motion are unchanged.
-*/
-
-const INK = "#F1F6FA"; // lit nodes, head of the request
-const BG = "#18364B"; // card surface, also the fill of an unlit node
-const LINE = "rgba(241,246,250,0.6)"; // diagram lines on a card
-const SLATE = "rgba(241,246,250,0.8)"; // guide line of the request
-const STEEL = "#A8B85A"; // trail, halo and pulse rings
-const ACCENT = "#4F91C9"; // where the request lands
+const INK = "#DFEAF5"; // lit nodes, head of the request
+const BG = "#0B111B"; // diagram panel, also the fill of an unlit node
+const LINE = "rgba(223,234,245,0.5)"; // diagram lines
+const SLATE = "rgba(223,234,245,0.7)"; // guide line of the request
+const STEEL = "#FF895D"; // trail, halo and pulse rings
+const ACCENT = "#A8C8EB"; // where the request lands
 const HAIR = 1;
 
 type Pt = [number, number];
@@ -42,7 +48,7 @@ const ink = { stroke: INK, strokeWidth: 1.4 } as const;
 const draw = { "data-draw": "", pathLength: 1, strokeDasharray: "1" } as const;
 const ring = { fill: "none", stroke: STEEL, strokeWidth: 1.4, opacity: 0 } as const;
 
-/* ---------- splits a string into masked words so each one can animate on its own ---------- */
+/* ---------- splits a string into masked words so each one can rise on its own ---------- */
 
 function Words({ text }: { text: string }) {
   return (
@@ -261,7 +267,16 @@ const TEST_ROUTES: Route[] = [
   },
 ];
 
-/* ---------- Request engine (same idea as GeometrySlice) ---------- */
+/* ---------- Request engine: a small requestAnimationFrame loop, no library ---------- */
+
+const REQ_FWD = 2800; // request travels to its target
+const REQ_HOLD = 600; // rests on the target
+const REQ_BACK = 2000; // response retracts
+const REQ_PAUSE = 800; // rests at the start
+const REQ_PERIOD = REQ_FWD + REQ_HOLD + REQ_BACK + REQ_PAUSE;
+const REQ_PULSE_AT = REQ_FWD - 100;
+
+const easeInOut = (x: number) => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2);
 
 function runRequest(svg: SVGSVGElement, routes: Route[], reduced: boolean) {
   const q = (id: string) => svg.querySelector<SVGElement>(`[data-m="${id}"]`)!;
@@ -314,33 +329,72 @@ function runRequest(svg: SVGSVGElement, routes: Route[], reduced: boolean) {
     shows.forEach((el) => el.setAttribute("opacity", reached.has(el.dataset.show ?? "") ? "1" : "0"));
   };
 
-  const tl = gsap.timeline({
-    paused: true,
-    delay: reduced ? 0.4 : 1.8,
-    repeat: -1,
-    onRepeat: () => {
-      st.r = (st.r + 1) % routes.length;
-    },
-  });
+  // the target pulses once when the request lands
+  const firePulse = () => {
+    const id = routes[st.r].pulse;
+    const p = id ? q(id) : null;
+    if (!p || typeof p.animate !== "function") return;
+    p.style.transformBox = "fill-box";
+    p.style.transformOrigin = "50% 50%";
+    p.animate(
+      [
+        { transform: "scale(1)", opacity: 0.9 },
+        { transform: `scale(${Number(p.dataset.grow ?? 1.6)})`, opacity: 0 },
+      ],
+      { duration: 1400, easing: "cubic-bezier(.25,.46,.45,.94)" }
+    );
+  };
 
-  // request -> reaches its target -> the target pulses -> the response retracts
-  tl.to(st, { u: 1, duration: 2.8, ease: "power2.inOut", onUpdate: render })
-    .add(() => {
-      const id = reduced ? undefined : routes[st.r].pulse;
-      const p = id ? q(id) : null;
-      if (p) {
-        gsap.fromTo(
-          p,
-          { scale: 1, opacity: 0.9, transformOrigin: "50% 50%" },
-          { scale: Number(p.dataset.grow ?? 1.6), opacity: 0, duration: 1.4, ease: "power2.out" }
-        );
+  const delay = reduced ? 400 : 1800;
+  let t = 0;
+  let last = 0;
+  let raf = 0;
+  let pulsedCycle = -1;
+
+  const tick = () => {
+    const a = t - delay;
+    if (a < 0) {
+      if (st.u !== 0) {
+        st.u = 0;
+        render();
       }
-    }, ">-0.1")
-    .to(st, { u: 0, duration: 2, ease: "power2.inOut", onUpdate: render }, "+=0.6")
-    .to({}, { duration: 0.8 });
+      return;
+    }
+    const cycle = Math.floor(a / REQ_PERIOD);
+    const c = a - cycle * REQ_PERIOD;
+    st.r = cycle % routes.length;
+
+    if (c < REQ_FWD) st.u = easeInOut(c / REQ_FWD);
+    else if (c < REQ_FWD + REQ_HOLD) st.u = 1;
+    else if (c < REQ_FWD + REQ_HOLD + REQ_BACK) st.u = 1 - easeInOut((c - REQ_FWD - REQ_HOLD) / REQ_BACK);
+    else st.u = 0;
+    render();
+
+    if (!reduced && c >= REQ_PULSE_AT && pulsedCycle !== cycle) {
+      pulsedCycle = cycle;
+      firePulse();
+    }
+  };
+
+  const frame = (now: number) => {
+    t += Math.min(100, now - last);
+    last = now;
+    tick();
+    raf = requestAnimationFrame(frame);
+  };
 
   render();
-  return tl;
+  return {
+    play() {
+      if (raf) return;
+      last = performance.now();
+      raf = requestAnimationFrame(frame);
+    },
+    pause() {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    },
+  };
 }
 
 /* ---------- Content ---------- */
@@ -408,7 +462,7 @@ const N = STEPS.length;
 
 /* ---------- Ring gauge (laptop, left column) ---------- */
 
-// one tick on the ring at the end of every step, drawn like the ruler ticks of the diagrams
+// one tick on the ring at the end of every step
 const GAUGE_TICKS = Array.from({ length: N }, (_, i) => {
   const a = -Math.PI / 2 + (2 * Math.PI * (i + 1)) / N;
   const f = (r: number, t: "x" | "y") => (70 + r * (t === "x" ? Math.cos(a) : Math.sin(a))).toFixed(2);
@@ -419,26 +473,26 @@ function Gauge() {
   return (
     <div aria-hidden data-fade className="relative mt-12 aspect-square w-[132px] opacity-0 motion-reduce:opacity-100">
       <svg viewBox="0 0 140 140" fill="none" className="absolute inset-0 h-full w-full">
-        <circle cx="70" cy="70" r="52" stroke="rgba(24,54,75,0.3)" strokeWidth="1.5" />
+        <circle cx="70" cy="70" r="52" stroke="rgba(223,234,245,0.15)" strokeWidth="1.5" />
         <circle
           data-gauge-arc
           cx="70"
           cy="70"
           r="52"
-          stroke="#4F91C9"
+          stroke="#A8C8EB"
           strokeWidth="3.5"
           pathLength={1}
           strokeDasharray="1"
           strokeDashoffset={1 - 1 / N}
           transform="rotate(-90 70 70)"
         />
-        <path d={GAUGE_TICKS} stroke="rgba(24,54,75,0.7)" strokeWidth="1.5" />
+        <path d={GAUGE_TICKS} stroke="rgba(223,234,245,0.5)" strokeWidth="1.5" />
       </svg>
       <div className="absolute inset-0 flex items-baseline justify-center pt-[46px]">
-        <span data-gauge-n className={`${DISPLAY} text-4xl font-bold leading-none tracking-[-0.04em] text-[#18364B] tabular-nums`}>
+        <span data-gauge-n className="text-4xl font-extrabold leading-none tracking-[-0.04em] text-[#DFEAF5] tabular-nums">
           01
         </span>
-        <span className={`${DISPLAY} ml-1 text-[11px] font-semibold text-[#18364B]/80`}>/0{N}</span>
+        <span className="ml-1 text-[11px] font-semibold text-[#657E9B]">/0{N}</span>
       </div>
     </div>
   );
@@ -449,13 +503,15 @@ function Gauge() {
 export function Approach() {
   const root = useRef<HTMLElement>(null);
 
-  useEffect(() => {
+  useIso(() => {
     const el = root.current;
     if (!el) return;
-    const q = gsap.utils.selector(el);
-    const cards = q("[data-step]") as HTMLElement[];
-    const shades = q("[data-shade]") as HTMLElement[];
-    const stackEl = q("[data-stack]")[0] as HTMLElement;
+    const all = <T extends Element>(s: string, from: ParentNode = el) => Array.from(from.querySelectorAll<T>(s));
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const cards = all<HTMLElement>("[data-step]");
+    const shades = all<HTMLElement>("[data-shade]");
+    const stackEl = el.querySelector<HTMLElement>("[data-stack]")!;
     const gaugeArc = el.querySelector<SVGCircleElement>("[data-gauge-arc]");
     const gaugeN = el.querySelector<HTMLElement>("[data-gauge-n]");
 
@@ -515,85 +571,105 @@ export function Approach() {
     cards.forEach((c) => ro?.observe(c));
     document.fonts?.ready.then(refresh);
 
-    /*
-      diagrams: same rule as the hero diagram. The requests are always on (slow and small).
-      With "reduce motion" enabled in the OS, only the intro and the pulses are skipped.
-    */
-    const mm = gsap.matchMedia();
-    mm.add(
-      {
-        full: "(prefers-reduced-motion: no-preference)",
-        reduced: "(prefers-reduced-motion: reduce)",
-      },
-      (mc) => {
-        const reduced = Boolean(mc.conditions?.reduced);
-
-        if (!reduced) {
-          const titleWords = q("[data-title] [data-word]");
-          const paraWords = q("[data-para] [data-word]");
-          const fade = q("[data-fade]");
-
-          // start state: every word sits below its mask
-          gsap.set([titleWords, paraWords], { yPercent: 110, opacity: 1 });
-          gsap.set(fade, { opacity: 0, y: 16 });
-
-          gsap
-            .timeline({ delay: 0.2, defaults: { overwrite: "auto" } })
-            // title: clean masked slide-up, word by word
-            .to(titleWords, {
-              yPercent: 0,
-              duration: 1.4,
-              ease: "expo.out",
-              stagger: 0.09,
-            })
-            // paragraph: fast, soft ripple underneath
-            .to(
-              paraWords,
-              {
-                yPercent: 0,
-                duration: 1.1,
-                ease: "power4.out",
-                stagger: 0.014,
-              },
-              "-=1.0"
-            )
-            // gauge fades in last
-            .to(fade, { opacity: 1, y: 0, duration: 0.9, ease: "power3.out" }, "-=0.7");
-        }
-
-        const loops: gsap.core.Timeline[] = [];
-        cards.forEach((card, i) => {
-          const r = gsap.utils.selector(card);
-          const svg = r("svg")[0] as unknown as SVGSVGElement;
-
-          // the diagram is laid out once, when its card comes into view
-          if (!reduced) {
-            gsap
-              .timeline({ scrollTrigger: { trigger: card, start: "top 85%", once: true } })
-              .fromTo(r("[data-draw]"), { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 1.2, ease: "power2.inOut", stagger: 0.06 }, 0)
-              .fromTo(r("[data-pop]"), { scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: 0.6, ease: "power3.out", stagger: 0.05 }, 0.4);
-          }
-
-          loops.push(runRequest(svg, STEPS[i].routes, reduced));
+    /* intro: masked words rise, then the gauge fades in */
+    if (!reduced) {
+      const rise = (words: HTMLElement[], start: number, dur: number, stagger: number, ease: string) => {
+        words.forEach((w) => {
+          w.style.opacity = "1";
+          w.style.transform = "translateY(110%)";
         });
+        void el.offsetWidth; // commit the start position before the transition begins
+        words.forEach((w, i) => {
+          w.style.transition = `transform ${dur}ms ${ease} ${start + i * stagger}ms`;
+          w.style.transform = "translateY(0)";
+        });
+        return start + Math.max(0, words.length - 1) * stagger + dur;
+      };
 
-        // the requests only run while the stack is on screen
-        const setRunning = (on: boolean) => loops.forEach((l) => (on ? l.play() : l.pause()));
-        if (typeof IntersectionObserver === "undefined") {
-          setRunning(true);
-          return () => setRunning(false);
-        }
-        const io = new IntersectionObserver((entries) => setRunning(entries.some((e) => e.isIntersecting)));
-        io.observe(stackEl);
-        return () => io.disconnect();
+      const titles = all<HTMLElement>("[data-title]");
+      const paras = all<HTMLElement>("[data-para]");
+      let fadeStart = 1500;
+      titles.forEach((title, k) => {
+        const titleEnd = rise(all<HTMLElement>("[data-word]", title), 200, 1400, 90, "cubic-bezier(.16,1,.3,1)");
+        const paraEnd = rise(all<HTMLElement>("[data-word]", paras[k]), titleEnd - 1000, 1100, 14, "cubic-bezier(.165,.84,.44,1)");
+        fadeStart = paraEnd - 700;
+      });
+
+      const fades = all<HTMLElement>("[data-fade]");
+      fades.forEach((f) => {
+        f.style.opacity = "0";
+        f.style.transform = "translateY(16px)";
+      });
+      void el.offsetWidth;
+      fades.forEach((f) => {
+        f.style.transition = `opacity 900ms cubic-bezier(.215,.61,.355,1) ${fadeStart}ms, transform 900ms cubic-bezier(.215,.61,.355,1) ${fadeStart}ms`;
+        f.style.opacity = "1";
+        f.style.transform = "none";
+      });
+    }
+
+    /* diagrams: each one draws itself once when its card comes into view, then its request loops */
+    const parts = cards.map((card) => {
+      const draws = all<SVGElement>("[data-draw]", card);
+      const pops = all<SVGElement>("[data-pop]", card);
+      if (!reduced) {
+        draws.forEach((d) => (d.style.strokeDashoffset = "1"));
+        pops.forEach((p) => {
+          p.style.transformBox = "fill-box";
+          p.style.transformOrigin = "50% 50%";
+          p.style.transform = "scale(0)";
+        });
       }
-    );
+      return { draws, pops };
+    });
+
+    const reveal = (i: number) => {
+      const { draws, pops } = parts[i];
+      void cards[i].offsetWidth;
+      draws.forEach((d, k) => {
+        d.style.transition = `stroke-dashoffset 1200ms cubic-bezier(.45,0,.55,1) ${k * 60}ms`;
+        d.style.strokeDashoffset = "0";
+      });
+      pops.forEach((p, k) => {
+        p.style.transition = `transform 600ms cubic-bezier(.215,.61,.355,1) ${400 + k * 50}ms, fill 300ms ease 0ms`;
+        p.style.transform = "scale(1)";
+      });
+    };
+
+    let cardIo: IntersectionObserver | null = null;
+    if (!reduced && typeof IntersectionObserver !== "undefined") {
+      cardIo = new IntersectionObserver(
+        (entries) =>
+          entries.forEach((e) => {
+            if (!e.isIntersecting) return;
+            reveal(cards.indexOf(e.target as HTMLElement));
+            cardIo?.unobserve(e.target);
+          }),
+        { rootMargin: "0px 0px -15% 0px" }
+      );
+      cards.forEach((c) => cardIo!.observe(c));
+    } else if (!reduced) {
+      cards.forEach((_, i) => reveal(i));
+    }
+
+    // the requests only run while the stack is on screen
+    const loops = cards.map((card, i) => runRequest(card.querySelector("svg") as SVGSVGElement, STEPS[i].routes, reduced));
+    const setRunning = (on: boolean) => loops.forEach((l) => (on ? l.play() : l.pause()));
+    let stackIo: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver === "undefined") {
+      setRunning(true);
+    } else {
+      stackIo = new IntersectionObserver((entries) => setRunning(entries.some((e) => e.isIntersecting)));
+      stackIo.observe(stackEl);
+    }
 
     return () => {
       window.removeEventListener("scroll", update);
       window.removeEventListener("resize", refresh);
       ro?.disconnect();
-      mm.revert();
+      cardIo?.disconnect();
+      stackIo?.disconnect();
+      setRunning(false);
     };
   }, []);
 
@@ -602,7 +678,7 @@ export function Approach() {
       ref={root}
       id="approach"
       aria-label="My approach"
-      className={`${display.variable} ${body.variable} bg-[#F1F6FA] px-5 py-16 font-[family-name:var(--font-approach-body)] text-[#18364B] antialiased selection:bg-[#A8B85A] selection:text-[#18364B] md:px-12 md:py-28 lg:px-16`}
+      className={`${manrope.variable} ${DISPLAY} bg-[#0B111B] px-5 py-16 text-[#DFEAF5] antialiased selection:bg-[#FF895D] selection:text-[#0B111B] md:px-12 md:py-28 lg:px-16`}
     >
       {/*
         --top  : gap above the stack (the finished stack starts here, level with the heading)
@@ -613,20 +689,20 @@ export function Approach() {
       */}
       <div
         style={{ "--stick": `calc(var(--top) + ${N - 1} * var(--step))` } as React.CSSProperties}
-        className="flex flex-col [--gap:1.5rem] [--step:52px] [--top:16px] md:[--gap:2.5rem] md:[--step:64px] md:[--top:24px] lg:grid lg:grid-cols-12 lg:gap-x-12 lg:[--card:clamp(360px,calc(100svh_-_var(--stick)_-_32px),520px)] lg:[--gap:4rem]"
+        className="mx-auto flex w-full max-w-[90rem] flex-col [--gap:1.5rem] [--step:52px] [--top:16px] md:[--gap:2.5rem] md:[--step:64px] md:[--top:24px] lg:grid lg:grid-cols-12 lg:gap-x-12 lg:[--card:clamp(360px,calc(100svh_-_var(--stick)_-_32px),520px)] lg:[--gap:4rem]"
       >
         {/* phone / tablet: plain heading and intro above the stack */}
         <h2
           data-title
           aria-label="My approach"
-          className={`${DISPLAY} text-[2.5rem] font-bold leading-none tracking-[-0.05em] text-[#18364B] md:text-6xl lg:hidden`}
+          className="text-[2.5rem] font-extrabold leading-none tracking-[-0.055em] text-[#DFEAF5] md:text-6xl lg:hidden"
         >
           <Words text="My approach" />
         </h2>
         <p
           data-para
           aria-label={INTRO}
-          className="mt-4 max-w-[48ch] text-base font-medium leading-[1.65] text-[#18364B]/90 md:text-lg lg:hidden"
+          className="mt-4 max-w-[48ch] text-[15px] font-medium leading-[1.7] text-[#657E9B] md:text-lg lg:hidden"
         >
           <Words text={INTRO} />
         </p>
@@ -639,11 +715,11 @@ export function Approach() {
           <h2
             data-title
             aria-label="My approach"
-            className={`${DISPLAY} -mt-[0.07em] text-6xl font-bold leading-[0.92] tracking-[-0.055em] text-[#18364B] xl:text-7xl`}
+            className="-mt-[0.07em] text-6xl font-extrabold leading-[0.92] tracking-[-0.055em] text-[#DFEAF5] xl:text-7xl"
           >
             <Words text="My approach" />
           </h2>
-          <p data-para aria-label={INTRO} className="mt-6 max-w-[36ch] text-lg font-medium leading-[1.6] text-[#18364B]/90">
+          <p data-para aria-label={INTRO} className="mt-6 max-w-[36ch] text-base font-medium leading-[1.7] text-[#657E9B]">
             <Words text={INTRO} />
           </p>
           <Gauge />
@@ -656,17 +732,20 @@ export function Approach() {
               key={n}
               data-step
               style={{ top: "var(--stick)" }}
-              className="sticky mb-[var(--gap)] flex min-h-[340px] flex-col overflow-hidden rounded-[28px] border border-[#18364B]/15 bg-[#DCE8F3] text-[#18364B] shadow-[0_-12px_32px_rgba(24,54,75,0.16)] will-change-transform md:min-h-[400px] lg:h-[var(--card)] lg:min-h-[360px]"
+              className={`sticky mb-[var(--gap)] flex min-h-[340px] flex-col overflow-hidden rounded-[2rem] will-change-transform md:min-h-[400px] lg:h-[var(--card)] lg:min-h-[360px] ${CARD}`}
             >
               {/* title strip: what stays visible once the next cards cover the rest */}
-              <div className="flex h-[var(--step)] shrink-0 items-center gap-3 border-b border-[#18364B]/20 px-5 md:gap-4 md:px-8 lg:px-10">
-                <span className={`${DISPLAY} rounded-full bg-[#A8B85A] px-2 py-1 text-xs font-bold tabular-nums text-[#18364B] md:text-sm`}>{n}</span>
-                <h3 className={`${DISPLAY} text-lg font-semibold leading-none tracking-[-0.03em] text-[#18364B] md:text-2xl lg:text-3xl`}>{title}</h3>
+              <div className="flex h-[var(--step)] shrink-0 items-center gap-3 px-6 md:gap-4 md:px-9 lg:px-11">
+                <span className="text-xs font-semibold tabular-nums text-[#A8C8EB] md:text-sm">{n}</span>
+                <h3 className="text-lg font-extrabold leading-none tracking-[-0.03em] text-[#DFEAF5] md:text-2xl lg:text-3xl">{title}</h3>
               </div>
 
               {/* diagram (left) + text (right) */}
-              <div className="grid flex-1 grid-cols-[104px_1fr] items-center gap-x-5 px-5 py-6 md:grid-cols-[160px_1fr] md:gap-x-8 md:px-8 lg:grid-cols-[240px_1fr] lg:gap-x-12 lg:px-10">
-                <div aria-hidden className="rounded-xl bg-[#18364B] bg-[radial-gradient(rgba(241,246,250,0.22)_1px,transparent_1px)] bg-[length:14px_14px]">
+              <div className="grid flex-1 grid-cols-[104px_1fr] items-center gap-x-5 px-6 pb-7 pt-3 md:grid-cols-[160px_1fr] md:gap-x-8 md:px-9 md:pb-9 lg:grid-cols-[240px_1fr] lg:gap-x-12 lg:px-11">
+                <div
+                  aria-hidden
+                  className="rounded-xl border border-[#253B56] bg-[#0B111B] bg-[radial-gradient(rgba(223,234,245,0.12)_1px,transparent_1px)] bg-[length:14px_14px]"
+                >
                   <svg
                     viewBox="0 0 200 200"
                     fill="none"
@@ -678,22 +757,22 @@ export function Approach() {
                   </svg>
                 </div>
                 <div>
-                  <p
-                    className={`${DISPLAY} text-[15px] font-semibold leading-[1.15] tracking-[-0.02em] text-[#18364B] [text-wrap:balance] md:text-xl lg:text-[1.75rem] lg:tracking-[-0.03em]`}
-                  >
+                  <p className="text-[15px] font-extrabold leading-[1.15] tracking-[-0.03em] text-[#DFEAF5] [text-wrap:balance] md:text-xl lg:text-[1.75rem]">
                     {lead}
                   </p>
-                  <p className="mt-2 text-[13.5px] leading-[1.6] text-[#18364B]/85 [text-wrap:pretty] md:mt-3 md:text-[16px] md:leading-[1.65] lg:max-w-[46ch]">{body}</p>
+                  <p className="mt-2 text-[13.5px] font-medium leading-[1.65] text-[#DFEAF5]/70 [text-wrap:pretty] md:mt-3 md:text-[16px] md:leading-[1.7] lg:max-w-[46ch]">
+                    {body}
+                  </p>
                   {/* what you hold at the end of this step */}
-                  <p className="mt-5 hidden items-center gap-3 border-t border-[#18364B]/20 pt-3 text-sm md:flex">
-                    <span className={`${DISPLAY} rounded-full bg-[#A8B85A] px-2.5 py-1 text-xs font-bold uppercase tracking-[0.08em] text-[#18364B]`}>You get</span>
-                    <span className={`${DISPLAY} text-[15px] font-semibold tracking-[-0.01em] text-[#18364B]`}>{out}</span>
+                  <p className="mt-6 hidden items-baseline gap-3 md:flex">
+                    <span className="text-sm font-semibold text-[#657E9B]">You get</span>
+                    <span className="text-[15px] font-semibold tracking-[-0.01em] text-[#A8C8EB]">{out}</span>
                   </p>
                 </div>
               </div>
 
               {/* dims the card as newer ones stack on top of it */}
-              <div data-shade aria-hidden className="pointer-events-none absolute inset-0 bg-[#18364B] opacity-0" />
+              <div data-shade aria-hidden className="pointer-events-none absolute inset-0 bg-[#0B111B] opacity-0" />
             </li>
           ))}
           {/* holds the finished stack on screen for a moment, so the last card is pinned like the others */}

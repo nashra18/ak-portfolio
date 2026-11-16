@@ -1,28 +1,32 @@
 "use client";
 
 /**
- * Philosophy section, built on the About theme. Just one paragraph.
+ * Philosophy section, same theme as About. Just one paragraph.
  * Needs: next (next/font), gsap (ScrollTrigger), Tailwind.
  *
  * Palette
- * Frost #F1F6FA | Deep Fjord #18364B | Iced Denim #4F91C9
+ * Obsidian #0B111B (bg) | Atlantic #253B56 (borders) | Ice Sheet #DFEAF5 (main text)
+ * Tangerine #FF895D (accent) | Glacier #A8C8EB (highlights) | Storm #657E9B (quiet text)
  *
- * Scroll moment (plays once)
- * The paragraph lights up word by word as it comes into view.
+ * Type scale (one font, three weights): 800 key words, 600 headline.
+ * Motion: the paragraph lights up word by word as it comes into view. Plays once.
  */
 
-import { Bricolage_Grotesque, Instrument_Serif } from "next/font/google";
+import { Manrope } from "next/font/google";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const display = Bricolage_Grotesque({ subsets: ["latin"], display: "swap", variable: "--font-phil-display" });
-const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], display: "swap", variable: "--font-phil-serif" });
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["500", "600", "800"],
+  display: "swap",
+  variable: "--font-phil-display",
+});
 
 const DISPLAY = "font-[family-name:var(--font-phil-display)]";
-const SERIF = "font-[family-name:var(--font-phil-serif)]";
 const useIso = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /* Content: edit here */
@@ -30,7 +34,7 @@ const useIso = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 const TEXT =
   "I build backend systems with a focus on reliability, security, and simplicity. Every API, every data model, every decision should make the product stronger, so it can grow without becoming harder to maintain.";
 
-/** Important words in Iced Denim */
+/** Key words in Glacier */
 const HI_WORDS = ["reliability", "security", "simplicity"];
 
 export default function BackendPhilosophy() {
@@ -65,12 +69,12 @@ export default function BackendPhilosophy() {
   return (
     <section
       ref={root}
-      className={`${display.variable} ${serif.variable} ${DISPLAY} relative isolate flex min-h-[70svh] items-center overflow-clip bg-[#F1F6FA] px-5 py-28 text-[#18364B] antialiased selection:bg-[#A8B85A] selection:text-[#18364B] md:px-12 lg:px-16`}
+      className={`${manrope.variable} ${DISPLAY} relative isolate -mt-px flex min-h-[70svh] items-center overflow-clip bg-[#0B111B] px-5 py-28 text-[#DFEAF5] antialiased selection:bg-[#FF895D] selection:text-[#0B111B] md:px-12 lg:px-16`}
     >
       <div className="mx-auto w-full max-w-[90rem]">
         <p
           data-text
-          className="max-w-5xl text-[clamp(1.75rem,3.8vw,3.75rem)] font-semibold leading-[1.22] tracking-[-0.03em]"
+          className="max-w-5xl text-[clamp(1.75rem,3.8vw,3.75rem)] font-semibold leading-[1.18] tracking-[-0.035em]"
         >
           {words.map((w, i) => {
             const clean = w.replace(/[^a-zA-Z]/g, "");
@@ -79,7 +83,9 @@ export default function BackendPhilosophy() {
               <span
                 key={i}
                 data-word
-                className={`mr-[0.26em] inline-block will-change-transform ${hi ? `${SERIF} font-normal italic text-[#4F91C9]` : ""}`}
+                className={`mr-[0.26em] inline-block will-change-transform ${
+                  hi ? "font-extrabold text-[#A8C8EB]" : ""
+                }`}
               >
                 {w}
               </span>

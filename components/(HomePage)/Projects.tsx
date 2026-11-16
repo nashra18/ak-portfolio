@@ -1,132 +1,111 @@
 "use client";
 
 /**
- * Projects section, built on the About theme.
- * Needs: next (next/font), gsap (ScrollTrigger), Tailwind.
+ * Projects section, dark Skills theme with soft glass cards. No images, no gsap.
+ * Needs: next (next/font), Tailwind.
  *
  * Palette
- * Frost #F1F6FA | Deep Fjord #18364B | Iced Denim #4F91C9 | Pistachio #A8B85A
+ * Obsidian #0B111B (bg) | Ice Sheet #DFEAF5 (titles) | Glacier #A8C8EB (numbers, links)
+ * Storm #657E9B (labels) | Tangerine #FF895D (selection, link hover)
  *
- * Layout
- * Phone: one column. Tablet: two columns. Laptop and up: three columns.
- * Each card reads top to bottom: number and title, description, stack, image.
- * Globe (live) and code icons sit on top of the image, both in grey.
+ * Cards: low opacity white fill (white/6), slightly rounded corners, no shadow.
+ * Phone: 1 column. Tablet: 2 columns. Laptop and up: 3 columns.
+ * Each card: number and title on the left, live (globe) and code (GitHub) icons on the right,
+ * then what it is, the problem it solved, and the stack at the bottom.
  *
- * Images (all local, put these files in public/projects/)
- * finance.png, sibbu.png, url-shortener.png,
- * aerosense.png, expense-tracker.png, exonova.png
- *
- * Motion (kept small)
- * 1. The heading rises out of a mask, letter by letter
- * 2. Each card fades up once when it arrives
+ * Motion: one soft fade-up per card when it enters the screen. Nothing else moves.
  */
 
-import { useEffect, useRef, useState } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
+import { Manrope } from "next/font/google";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
-gsap.registerPlugin(ScrollTrigger);
-
-const display = Bricolage_Grotesque({ subsets: ["latin"], display: "swap", variable: "--font-projects-display" });
-const mono = JetBrains_Mono({ subsets: ["latin"], display: "swap", variable: "--font-projects-mono" });
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["500", "600", "800"],
+  display: "swap",
+  variable: "--font-projects-display",
+});
 
 const DISPLAY = "font-[family-name:var(--font-projects-display)]";
-const MONO = "font-[family-name:var(--font-projects-mono)]";
-const SPRING = "ease-[cubic-bezier(.22,1,.36,1)]";
+const HIDDEN = "opacity-0 motion-reduce:opacity-100";
+const useIso = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /* Content: edit here */
 
 type Project = {
   title: string;
-  desc: string;
-  tags: string[];
-  code: string;
+  kind: string; // one short line: what it is
+  problem: string; // the problem it solved
+  stack: string[];
   live: string;
-  img: string; // file inside public/projects/ (name must match exactly, including case)
+  code: string;
 };
 
-const PROJECTS: Project[] = [
-  {
-    title: "Finance Dashboard",
-    desc: "Secure finance management platform with JWT auth, role based access, and REST APIs.",
-    tags: ["Java", "Spring Boot", "MySQL", "JWT"],
-    code: "https://github.com/meranaamkhann/finance_dashboard",
-    live: "https://finance-pro-sibbus.vercel.app/",
-    img: "/projects/finance.png",
-  },
-  {
-    title: "Sibbu",
-    desc: "AI powered chatbot that gives healthcare information and support.",
-    tags: ["Python", "Flask", "Google Gemini", "SQLite"],
-    code: "https://github.com/meranaamkhann/Sibbu",
-    live: "https://sibbu.onrender.com/",
-    img: "/projects/sibbu.png",
-  },
-  {
-    title: "URL Shortener",
-    desc: "Short, shareable links with custom aliases, authentication, and link analytics.",
-    tags: ["React", "Node", "MongoDB", "JWT"],
-    code: "https://github.com/meranaamkhann?tab=repositories",
-    live: "https://url-shortner-sibbus.vercel.app/",
-    img: "/projects/url-shortener.png",
-  },
-  {
-    title: "AeroSense",
-    desc: "Machine learning model that predicts air quality from historical data.",
-    tags: ["Python", "Pandas", "Scikit", "ML"],
-    code: "https://github.com/meranaamkhann/AeroSense",
-    live: "https://air-quality-prediction-sibbus.vercel.app/",
-    img: "/projects/aerosense.png",
-  },
-  {
-    title: "Expense Tracker",
-    desc: "Full stack app to track and manage personal expenses, built with Spring Boot and React.",
-    tags: ["Java", "Spring Boot", "React", "TypeScript"],
-    code: "https://github.com/meranaamkhann/InCampus_MVP",
-    live: "https://spendwise-sibbus.vercel.app/",
-    img: "/projects/expense-tracker.png",
-  },
-  {
-    title: "ExoNova",
-    desc: "AI that detects exoplanets from light curve data using machine learning.",
-    tags: ["Python", "TypeScript", "HTML", "JavaScript"],
-    code: "https://github.com/meranaamkhann/ExoNova",
-    live: "https://ai-exoplanet-discovery-platform.vercel.app/",
-    img: "/projects/exonova.png",
-  },
-];
+const DATA: { title: string; intro: string; projects: Project[] } = {
+  title: "What I built",
+  intro: "Each project starts with a real problem. Here is what was broken, and what I built to fix it.",
+  projects: [
+    {
+      title: "Finance Dashboard",
+      kind: "Secure finance management platform",
+      problem:
+        "Financial records are private, and not every user should see or change everything. This backend puts every endpoint behind JWT login and gives each role only the actions it is allowed, so data stays protected and access stays under control.",
+      stack: ["Java", "Spring Boot", "MySQL", "JWT"],
+      live: "https://finance-pro-sibbus.vercel.app/",
+      code: "https://github.com/meranaamkhann/finance_dashboard",
+    },
+    {
+      title: "Sibbu",
+      kind: "AI healthcare chatbot",
+      problem:
+        "Finding clear health information fast is hard, and search results are full of noise. Sibbu answers health questions in plain language using Google Gemini, and keeps conversations in SQLite so people can come back to them.",
+      stack: ["Python", "Flask", "Google Gemini", "SQLite"],
+      live: "https://sibbu.onrender.com/",
+      code: "https://github.com/meranaamkhann/Sibbu",
+    },
+    {
+      title: "URL Shortener",
+      kind: "Short links with analytics",
+      problem:
+        "Long links are messy to share and you never know if anyone opened them. This app creates short links with custom aliases, ties them to a login so each person manages only their own, and shows how many times each link was used.",
+      stack: ["React", "Node", "MongoDB", "JWT"],
+      live: "https://url-shortner-sibbus.vercel.app/",
+      code: "https://github.com/meranaamkhann?tab=repositories",
+    },
+    {
+      title: "AeroSense",
+      kind: "Air quality prediction model",
+      problem:
+        "Air quality is usually known only after it has already turned bad. AeroSense learns from historical readings and predicts air quality ahead of time, so people can plan around it instead of reacting to it.",
+      stack: ["Python", "Pandas", "Scikit-learn", "ML"],
+      live: "https://air-quality-prediction-sibbus.vercel.app/",
+      code: "https://github.com/meranaamkhann/AeroSense",
+    },
+    {
+      title: "Expense Tracker",
+      kind: "Personal expense manager",
+      problem:
+        "Daily spending is scattered across payments and memory, so it is hard to see where money actually goes. This full stack app gives one place to record, edit and review personal expenses.",
+      stack: ["Java", "Spring Boot", "React", "TypeScript"],
+      live: "https://spendwise-sibbus.vercel.app/",
+      code: "https://github.com/meranaamkhann/InCampus_MVP",
+    },
+    {
+      title: "ExoNova",
+      kind: "Exoplanet detection with ML",
+      problem:
+        "Finding exoplanets means studying huge amounts of star light curve data, which is slow to check by hand. ExoNova trains a machine learning model on that data to spot the signs of a planet automatically.",
+      stack: ["Python", "TypeScript", "HTML", "JavaScript"],
+      live: "https://ai-exoplanet-discovery-platform.vercel.app/",
+      code: "https://github.com/meranaamkhann/ExoNova",
+    },
+  ],
+};
 
-const pad = (n: number) => String(n).padStart(2, "0");
+const ICON =
+  "grid size-9 shrink-0 place-items-center rounded-full bg-white/[0.07] text-[#A8C8EB] transition-colors duration-300 hover:bg-[#FF895D] hover:text-[#0B111B] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FF895D]";
 
-/* Small pieces */
-
-const MASK = "-mb-[0.14em] -mt-[0.06em] inline-block overflow-hidden pb-[0.14em] pt-[0.06em] align-top";
-
-/** Letters inside a mask so they can rise into view. Words never break mid word. */
-function Chars({ text }: { text: string }) {
-  return (
-    <>
-      {text.split(" ").flatMap((w, i) => {
-        const word = (
-          <span key={i} aria-hidden className={`${MASK} whitespace-nowrap`}>
-            {Array.from(w).map((c, k) => (
-              <span key={k} data-char className="inline-block will-change-transform">
-                {c}
-              </span>
-            ))}
-          </span>
-        );
-        return i ? [" ", word] : [word];
-      })}
-    </>
-  );
-}
-
-/* Both icons are grey */
-const ICON_BASE = `grid size-9 place-items-center rounded-full bg-[#E5E7EB] text-[#4B5563] transition-colors duration-300 hover:bg-[#D1D5DB] hover:text-[#111827] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4F91C9]`;
-
-/** Earth / globe icon for the live demo */
+/** Globe icon for the live demo */
 const LiveIcon = () => (
   <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <circle cx="12" cy="12" r="10" />
@@ -135,137 +114,46 @@ const LiveIcon = () => (
   </svg>
 );
 
-const GithubIcon = () => (
+/** GitHub icon for the code */
+const CodeIcon = () => (
   <svg viewBox="0 0 24 24" className="size-[17px]" fill="currentColor" aria-hidden>
     <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.37-3.87-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
   </svg>
 );
 
-/**
- * Local screenshot from public/projects/.
- * If the file is missing, the title placeholder behind it stays visible.
- * The ref check covers images that failed before React attached onError.
- */
-function Shot({ p }: { p: Project }) {
-  const [failed, setFailed] = useState(false);
-  const ref = useRef<HTMLImageElement>(null);
-
-  useEffect(() => {
-    const img = ref.current;
-    if (img && img.complete && img.naturalWidth === 0) setFailed(true);
-  }, []);
-
-  if (failed) return null;
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      ref={ref}
-      src={p.img}
-      alt={`${p.title} preview`}
-      loading="lazy"
-      decoding="async"
-      onError={() => setFailed(true)}
-      className={`absolute inset-0 size-full object-cover object-top transition-transform duration-700 ${SPRING} group-hover/shot:scale-[1.03]`}
-    />
-  );
-}
-
-/* Card */
-
-function Card({ p, idx }: { p: Project; idx: number }) {
-  return (
-    <li data-card className="flex h-full flex-col rounded-3xl bg-[#E6EEF5] p-4 md:p-5">
-      {/* number and title */}
-      <div className="flex items-baseline gap-2.5">
-        <span className={`${MONO} text-xs text-[#4F91C9]`}>{pad(idx + 1)}</span>
-        <h3 className="line-clamp-1 text-xl font-extrabold leading-[1.15] tracking-[-0.03em] md:text-[1.35rem]">{p.title}</h3>
-      </div>
-
-      {/* description: fixed 3 line space so every card lines up */}
-      <p className="mt-2.5 line-clamp-3 min-h-[4.65em] text-sm leading-[1.55] text-[#18364B]/75">{p.desc}</p>
-
-      {/* stack: fixed 2 row space */}
-      <ul className="mt-3 flex min-h-[3.5rem] flex-wrap content-start gap-1.5">
-        {p.tags.map((t) => (
-          <li key={t} className={`${MONO} h-6 rounded-full bg-[#4F91C9]/15 px-2.5 text-[11px] leading-6 text-[#18364B]`}>
-            {t}
-          </li>
-        ))}
-      </ul>
-
-      {/* image pinned to the bottom, with live (globe) and code icons on top */}
-      <div className="group/shot relative mt-auto pt-4">
-        <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-[#18364B]">
-          <span
-            className={`${DISPLAY} absolute inset-0 flex items-center justify-center px-4 text-center text-xl font-bold tracking-[-0.04em] text-[#F1F6FA]/20`}
-          >
-            {p.title}
-          </span>
-          <Shot p={p} />
-        </div>
-
-        <div className="absolute right-2 top-6 flex gap-1.5 rounded-full bg-[#F1F6FA]/90 p-1 backdrop-blur-sm">
-          <a href={p.live} target="_blank" rel="noopener noreferrer" aria-label={`Open live demo of ${p.title}`} title="Live demo" className={ICON_BASE}>
-            <LiveIcon />
-          </a>
-          <a href={p.code} target="_blank" rel="noopener noreferrer" aria-label={`View code of ${p.title}`} title="View code" className={ICON_BASE}>
-            <GithubIcon />
-          </a>
-        </div>
-      </div>
-    </li>
-  );
-}
-
-/* Section */
-
 export function Projects() {
   const root = useRef<HTMLElement>(null);
 
-  useEffect(() => {
+  useIso(() => {
     const el = root.current;
     if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    const mm = gsap.matchMedia();
-
-    mm.add("(prefers-reduced-motion: no-preference)", () => {
-      /* 1. Heading rises out of a mask */
-      const head = el.querySelector<HTMLElement>("[data-head]");
-      const chars = gsap.utils.toArray<HTMLElement>(el.querySelectorAll("[data-head] [data-char]"));
-      if (head && chars.length) {
-        gsap.fromTo(
-          chars,
-          { yPercent: 118 },
-          {
-            yPercent: 0,
-            duration: 1.2,
-            ease: "expo.out",
-            stagger: 0.035,
-            scrollTrigger: { trigger: head, start: "top 92%", once: true },
-          }
-        );
-      }
-
-      /* 2. Cards fade up once */
-      gsap.utils.toArray<HTMLElement>(el.querySelectorAll("[data-card]")).forEach((card) => {
-        gsap.fromTo(
-          card,
-          { opacity: 0, y: 32 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.9,
-            ease: "power3.out",
-            clearProps: "opacity,transform",
-            scrollTrigger: { trigger: card, start: "top 90%", once: true },
-          }
-        );
-      });
+    const items = Array.from(el.querySelectorAll<HTMLElement>("[data-fade]"));
+    items.forEach((i) => {
+      i.style.opacity = "0";
+      i.style.transform = "translateY(12px)";
+      i.style.transition = "opacity 700ms cubic-bezier(.22,1,.36,1), transform 700ms cubic-bezier(.22,1,.36,1)";
     });
 
-    document.fonts?.ready.then(() => ScrollTrigger.refresh()).catch(() => {});
+    // one soft fade-up per block, once, as it enters the screen
+    const io = new IntersectionObserver(
+      (entries) => {
+        let n = 0;
+        entries.forEach((e) => {
+          if (!e.isIntersecting) return;
+          const t = e.target as HTMLElement;
+          t.style.transitionDelay = `${n++ * 80}ms`;
+          t.style.opacity = "1";
+          t.style.transform = "none";
+          io.unobserve(t);
+        });
+      },
+      { rootMargin: "0px 0px -8% 0px" }
+    );
+    items.forEach((i) => io.observe(i));
 
-    return () => mm.revert();
+    return () => io.disconnect();
   }, []);
 
   return (
@@ -273,29 +161,57 @@ export function Projects() {
       ref={root}
       id="projects"
       aria-label="Projects"
-      className={`${display.variable} ${mono.variable} ${DISPLAY} overflow-clip bg-[#F1F6FA] px-5 pb-20 pt-20 text-[#18364B] antialiased selection:bg-[#A8B85A] selection:text-[#18364B] md:px-12 md:pb-24 md:pt-28 lg:px-16 lg:pt-28`}
+      className={`${manrope.variable} ${DISPLAY} relative isolate overflow-clip bg-[#0B111B] text-[#DFEAF5] antialiased selection:bg-[#FF895D] selection:text-[#0B111B]`}
     >
-      <div className="mx-auto w-full max-w-[80rem]">
-        {/* heading */}
-        <div className="mb-12 flex flex-col gap-5 md:mb-14 md:flex-row md:items-end md:justify-between md:gap-10">
+      <div className="mx-auto w-full max-w-[90rem] px-5 pb-20 pt-20 md:px-12 md:pb-28 md:pt-28 lg:px-16">
+        {/* Heading: title left, intro right on desktop */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between md:gap-16">
           <h2
-            data-head
-            aria-label="Selected projects"
-            className="text-[3rem] font-extrabold leading-[0.9] tracking-[-0.055em] md:text-[4.25rem] xl:text-[5.5rem]"
+            data-fade
+            className={`select-none text-[12vw] font-extrabold leading-[0.9] tracking-[-0.055em] text-[#DFEAF5] md:whitespace-nowrap md:text-[length:min(7vw,11vh)] ${HIDDEN}`}
           >
-            <Chars text="Selected projects" />
-            <span className="ml-[0.04em] inline-block size-[0.12em] rounded-full bg-[#A8B85A]" />
+            {DATA.title}
           </h2>
-          <p className="max-w-[48ch] text-base leading-[1.6] text-[#18364B]/75 md:pb-2 md:text-lg">
-            A few things I have built, from secure full stack apps to machine learning models that learn from real data.
-            Each one is deployed, so you can try the live demo or read the code on GitHub.
+          <p data-fade className={`max-w-[36ch] text-[14px] font-medium leading-[1.65] text-[#657E9B] md:pb-2 md:text-base ${HIDDEN}`}>
+            {DATA.intro}
           </p>
         </div>
 
-        {/* phone: 1 column, tablet: 2 columns, laptop: 3 columns */}
-        <ol className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
-          {PROJECTS.map((p, i) => (
-            <Card key={p.title} p={p} idx={i} />
+        {/* Cards: 1 column phone, 2 tablet, 3 laptop */}
+        <ol className="mt-12 grid grid-cols-1 gap-4 md:mt-20 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
+          {DATA.projects.map((p, i) => (
+            <li
+              key={p.title}
+              data-fade
+              className={`flex h-full flex-col rounded-xl bg-white/[0.06] p-5 transition-colors duration-300 hover:bg-white/[0.09] md:p-6 ${HIDDEN}`}
+            >
+              {/* title left, live + code icons right */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-baseline gap-3">
+                  <span className="text-sm font-extrabold tabular-nums tracking-[-0.02em] text-[#A8C8EB]">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <h3 className="text-[1.5rem] font-extrabold leading-[1.05] tracking-[-0.045em] text-[#DFEAF5] md:text-[1.6rem]">
+                    {p.title}
+                  </h3>
+                </div>
+
+                <div className="flex gap-2">
+                  <a href={p.live} target="_blank" rel="noopener noreferrer" aria-label={`Open live demo of ${p.title}`} title="Live demo" className={ICON}>
+                    <LiveIcon />
+                  </a>
+                  <a href={p.code} target="_blank" rel="noopener noreferrer" aria-label={`View code of ${p.title}`} title="View code" className={ICON}>
+                    <CodeIcon />
+                  </a>
+                </div>
+              </div>
+
+              <p className="mt-1 pl-[2.1rem] text-[13px] font-medium leading-[1.5] text-[#657E9B]">{p.kind}</p>
+
+              <p className="mt-6 text-[15px] font-medium leading-[1.7] tracking-[-0.01em] text-[#DFEAF5]/80">{p.problem}</p>
+
+              <p className="mt-auto pt-6 text-[13px] font-medium leading-[1.6] text-[#A8C8EB]/70">{p.stack.join(", ")}</p>
+            </li>
           ))}
         </ol>
       </div>

@@ -5,11 +5,14 @@
  * Needs: next (next/font), gsap (ScrollTrigger), Tailwind.
  *
  * Palette
- * Obsidian #0B111B (bg) | Atlantic #253B56 (card, border) | Ice Sheet #DFEAF5 (names, titles)
- * Glacier #A8C8EB (numbers) | Storm #657E9B (description, years) | Tangerine #FF895D (selection)
+ * Obsidian #0B111B (bg) | Atlantic #253B56 (card, border) | Ice Sheet #DFEAF5 (titles, names)
+ * Glacier #A8C8EB (numbers, description) | Storm #657E9B (years) | Tangerine #FF895D (selection)
  *
  * Award style list inside one calm dark blue card per group.
  * No inner boxes, no divider lines, no icons. Space and size do the separating.
+ *
+ * Type scale (one font, three weights): 800 titles, 600 item names, 500 body.
+ * Item names, description and years are small on purpose, so the group title stays the main thing.
  *
  * Every piece of information appears exactly once.
  * Layout: two cards side by side on desktop, stacked on phones.
@@ -92,37 +95,37 @@ export default function Milestones() {
       id="milestones"
       className={`${manrope.variable} ${DISPLAY} relative isolate overflow-clip bg-[#0B111B] text-[#DFEAF5] antialiased selection:bg-[#FF895D] selection:text-[#0B111B]`}
     >
-      <div className="mx-auto w-full max-w-[90rem] px-5 py-16 md:px-12 md:py-24 lg:px-16">
+      <div className="mx-auto w-full max-w-[90rem] px-5 py-20 md:px-12 md:py-28 lg:px-16">
         <div className="grid gap-5 md:grid-cols-2 md:gap-6">
           {DATA.map((group) => (
-            <div key={group.title} className={`flex flex-col gap-10 rounded-[2rem] p-7 md:gap-14 md:p-12 ${CARD}`}>
-              <div className="flex flex-col gap-4">
+            <div key={group.title} className={`flex flex-col gap-8 rounded-[2rem] p-7 md:gap-10 md:p-10 ${CARD}`}>
+              <div className="flex flex-col gap-3">
                 <h2
                   data-fade
                   className={`select-none text-[length:clamp(2.25rem,10vw,3rem)] font-extrabold leading-[0.95] tracking-[-0.055em] text-[#DFEAF5] md:text-[length:min(3.8vw,7vh)] ${HIDDEN}`}
                 >
                   {group.title}
                 </h2>
-                <p data-fade className={`max-w-[40ch] text-[15px] font-medium leading-[1.7] text-[#657E9B] md:text-base ${HIDDEN}`}>
+                <p data-fade className={`max-w-[40ch] text-[13px] font-medium leading-[1.65] text-[#A8C8EB]/70 md:text-sm ${HIDDEN}`}>
                   {group.text}
                 </p>
               </div>
 
-              <ul className="flex flex-col gap-7 md:gap-9">
+              <ul className="flex flex-col gap-5 md:gap-6">
                 {group.items.map((it, i) => (
                   <li
                     key={it.name}
                     data-fade
-                    className={`grid grid-cols-[2rem_1fr_auto] items-baseline gap-x-3 md:grid-cols-[2.75rem_1fr_auto] ${HIDDEN}`}
+                    className={`grid grid-cols-[1.75rem_1fr_auto] items-baseline gap-x-3 md:grid-cols-[2.25rem_1fr_auto] ${HIDDEN}`}
                   >
-                    <span className="text-xs font-semibold tabular-nums text-[#A8C8EB] md:text-sm">
+                    <span className="text-[11px] font-semibold tabular-nums text-[#A8C8EB] md:text-xs">
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <span className="text-[length:clamp(1.1rem,4.8vw,1.3rem)] font-semibold leading-[1.2] tracking-[-0.025em] text-[#DFEAF5] md:text-[length:min(1.5vw,2.8vh)]">
+                    <span className="text-[15px] font-semibold leading-[1.3] tracking-[-0.02em] text-[#DFEAF5] md:text-base">
                       {it.name}
                     </span>
                     {it.meta && (
-                      <span className="whitespace-nowrap text-xs font-semibold tabular-nums text-[#657E9B] md:text-sm">{it.meta}</span>
+                      <span className="whitespace-nowrap text-[11px] font-medium tabular-nums text-[#657E9B] md:text-xs">{it.meta}</span>
                     )}
                   </li>
                 ))}
