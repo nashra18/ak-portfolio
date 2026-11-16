@@ -1,106 +1,75 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+/**
+ * Skills section. Self-contained.
+ * Needs: next (next/font), gsap (ScrollTrigger), Tailwind.
+ *
+ * Palette
+ * Obsidian #0B111B (bg) | Ice Sheet #DFEAF5 (titles, skills) | Glacier #A8C8EB (numbers, phone skills)
+ * Storm #657E9B (intro) | Tangerine #FF895D (selection)
+ *
+ * Award style list: no cards, no boxes, no lines, no icons, no slashes.
+ * Each row: number, group title on the left, skills on the right.
+ * Space and size do the separating.
+ *
+ * Phone hierarchy: number sits beside the title, title is big and heavy (800), skills are small, light (500) and softer in colour.
+ *
+ * Every piece of information appears exactly once.
+ * Layout: title and intro on top, then one row per group. Stacked on phones.
+ * Motion: one soft fade-up per block when it enters the screen. Nothing else moves.
+ */
+
+import { Manrope } from "next/font/google";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const display = Bricolage_Grotesque({ subsets: ["latin"], display: "swap", variable: "--font-skills-display" });
-const mono = JetBrains_Mono({ subsets: ["latin"], display: "swap", variable: "--font-skills-mono" });
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["500", "600", "800"],
+  display: "swap",
+  variable: "--font-skills-display",
+});
 
 const DISPLAY = "font-[family-name:var(--font-skills-display)]";
-const MONO = "font-[family-name:var(--font-skills-mono)]";
+const HIDDEN = "opacity-0 motion-reduce:opacity-100";
+const useIso = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
-/*
-  Skills: same theme as the Hero. Compact and easy to scan.
-  Layout: heading row on top, then one clean row per skill group (title on the left, skills on the right).
-  Skills in a row are separated by a "/" in Iced Denim.
-  Spacing: bigger gap at the top, tight rows, 20vw of space at the bottom.
-  Background is Frost (same as the Hero). No line above the first row or below the last.
+/* Content: edit here */
 
-  Palette
-  Frost #F1F6FA | Deep Fjord #18364B | Iced Denim #4F91C9 | Pistachio #A8B85A (accent) | White #FFFFFF
-*/
-
-const GROUPS: { title: string; items: string[] }[] = [
-  { title: "Languages", items: ["Java", "Python", "C++"] },
-  { title: "Backend", items: ["Spring Boot","Spring Security", "REST APIs", "JWT Auth", "MVC Architecture"] },
-  { title: "Database", items: ["MySQL", "JPA", "Hibernate"] },
-  { title: "AI / Data", items: ["Scikit-learn", "Pandas", "NumPy", "Feature Engineering"] },
-  { title: "Core CS", items: ["DSA", "OOP", "Operating Systems", "DBMS"] },
-  { title: "Tools", items: ["Git", "GitHub", "Maven", "Postman"] },
-];
-
-const pad = (n: number) => String(n).padStart(2, "0");
-
-/* ---------- text splitter ---------- */
-
-const MASK = "-mb-[0.14em] -mt-[0.06em] inline-block overflow-hidden pb-[0.14em] pt-[0.06em] align-top";
-
-function Chars({ text }: { text: string }) {
-  return (
-    <>
-      {text.split(" ").flatMap((w, i) => {
-        const word = (
-          <span key={i} aria-hidden className={`${MASK} whitespace-nowrap`}>
-            {Array.from(w).map((c, k) => (
-              <span key={k} data-char className="inline-block will-change-transform">
-                {c}
-              </span>
-            ))}
-          </span>
-        );
-        return i ? [" ", word] : [word];
-      })}
-    </>
-  );
-}
-
-/* ---------- section ---------- */
+const DATA = {
+  title: "What I know",
+  intro: "The languages, frameworks and tools I use to build backends and make sense of data.",
+  groups: [
+    { title: "Languages", items: ["Java", "Python", "C++"] },
+    { title: "Backend", items: ["Spring Boot", "Spring Security", "REST APIs", "JWT Auth", "MVC Architecture"] },
+    { title: "Database", items: ["MySQL", "JPA", "Hibernate"] },
+    { title: "AI / Data", items: ["Scikit-learn", "Pandas", "NumPy", "Feature Engineering"] },
+    { title: "Core CS", items: ["DSA", "OOP", "Operating Systems", "DBMS"] },
+    { title: "Tools", items: ["Git", "GitHub", "Maven", "Postman"] },
+  ],
+};
 
 export function Skills() {
   const root = useRef<HTMLElement>(null);
 
-  useEffect(() => {
+  useIso(() => {
     const el = root.current;
     if (!el) return;
-    const q = gsap.utils.selector(el);
     const mm = gsap.matchMedia();
 
     mm.add("(prefers-reduced-motion: no-preference)", () => {
-      const head = q("[data-head]")[0];
+      const items = gsap.utils.selector(el)("[data-fade]");
+      gsap.set(items, { opacity: 0, y: 12 });
 
-      gsap.fromTo(
-        q("[data-head] [data-char]"),
-        { yPercent: 118 },
-        { yPercent: 0, duration: 1.3, ease: "expo.out", stagger: 0.035, scrollTrigger: { trigger: head, start: "top 92%", once: true } }
-      );
-      gsap.fromTo(
-        q("[data-intro]"),
-        { opacity: 0, y: 16 },
-        { opacity: 1, y: 0, duration: 1, ease: "power3.out", delay: 0.3, scrollTrigger: { trigger: head, start: "top 92%", once: true } }
-      );
-
-      q("[data-row]").forEach((row) => {
-        const r = gsap.utils.selector(row);
-        const items = r("[data-item]");
-        const line = r("[data-line]");
-        const meta = r("[data-meta]");
-
-        gsap.set(line, { scaleX: 0, transformOrigin: "0% 50%" });
-        gsap.set(meta, { opacity: 0, y: 10 });
-        gsap.set(items, { yPercent: 110 });
-
-        gsap
-          .timeline({ scrollTrigger: { trigger: row, start: "top 90%", once: true } })
-          .to(line, { scaleX: 1, duration: 1.2, ease: "expo.inOut" }, 0)
-          .to(meta, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, 0.2)
-          .to(items, { yPercent: 0, duration: 1, ease: "expo.out", stagger: 0.05 }, 0.3);
+      // one soft fade-up per block, once, as it enters the screen
+      ScrollTrigger.batch(items, {
+        start: "top 92%",
+        once: true,
+        onEnter: (batch) => gsap.to(batch, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out", stagger: 0.08, overwrite: true }),
       });
-
-      document.fonts?.ready.then(() => ScrollTrigger.refresh());
     });
 
     return () => mm.revert();
@@ -111,63 +80,45 @@ export function Skills() {
       ref={root}
       id="skills"
       aria-label="Tech stack"
-      className={`${display.variable} ${mono.variable} ${DISPLAY} overflow-clip bg-[#F1F6FA] px-5 pb-[20vw] pt-24 text-[#18364B] antialiased selection:bg-[#A8B85A] selection:text-[#18364B] md:px-12 md:pt-32 lg:px-16 lg:pt-36`}
+      className={`${manrope.variable} ${DISPLAY} relative isolate overflow-clip bg-[#0B111B] text-[#DFEAF5] antialiased selection:bg-[#FF895D] selection:text-[#0B111B]`}
     >
-      {/* heading row */}
-      <div className="mb-8 grid gap-4 md:mb-10 lg:grid-cols-12 lg:items-end lg:gap-x-12">
-        <div className="lg:col-span-8">
-          <span className={`${MONO} mb-4 flex items-center gap-3 text-xs font-medium uppercase tracking-[0.18em] text-[#4F91C9]`}>
-            <span aria-hidden className="size-2 rounded-full bg-[#A8B85A]" />
-            Tech stack
-          </span>
+      <div className="mx-auto w-full max-w-[90rem] px-5 pb-20 pt-20 md:px-12 md:pb-28 md:pt-28 lg:px-16">
+        {/* Heading: title left, intro right on desktop */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between md:gap-16">
           <h2
-            data-head
-            aria-label="What I know"
-            className="text-[3rem] font-extrabold leading-[0.9] tracking-[-0.055em] md:text-7xl xl:text-[6.5rem]"
+            data-fade
+            className={`select-none text-[12vw] font-extrabold leading-[0.9] tracking-[-0.055em] text-[#DFEAF5] md:whitespace-nowrap md:text-[length:min(7vw,11vh)] ${HIDDEN}`}
           >
-            <Chars text="What I know" />
-            <span className="text-[#A8B85A]">.</span>
+            {DATA.title}
           </h2>
+          <p data-fade className={`max-w-[36ch] text-[14px] font-medium leading-[1.65] text-[#657E9B] md:pb-2 md:text-base ${HIDDEN}`}>
+            {DATA.intro}
+          </p>
         </div>
-        <p data-intro className="max-w-[36ch] text-base font-medium leading-[1.5] text-[#18364B]/75 md:text-lg lg:col-span-4 lg:pb-2">
-          The languages, frameworks and tools I use to build backends and make sense of data.
-        </p>
+
+        {/* Rows */}
+        <ul className="mt-14 flex flex-col gap-12 md:mt-24 md:gap-14">
+          {DATA.groups.map((g, i) => (
+            <li key={g.title} className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)] md:gap-16">
+              <div data-fade className={`flex items-baseline gap-3 md:gap-4 ${HIDDEN}`}>
+                <span className="text-sm font-extrabold tabular-nums tracking-[-0.02em] text-[#A8C8EB] md:text-sm md:font-semibold md:tracking-normal">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <h3 className="text-[2rem] font-extrabold leading-[1] tracking-[-0.05em] text-[#DFEAF5] md:text-[length:min(2.4vw,4.2vh)] md:tracking-[-0.045em]">
+                  {g.title}
+                </h3>
+              </div>
+
+              <p
+                data-fade
+                className={`max-w-[34ch] pl-[2.1rem] text-[15px] font-medium leading-[1.7] tracking-[-0.01em] text-[#A8C8EB]/70 md:max-w-none md:pl-0 md:text-[length:min(1.5vw,2.8vh)] md:leading-[1.6] md:tracking-[-0.02em] md:text-[#DFEAF5]/80 ${HIDDEN}`}
+              >
+                {g.items.join(", ")}
+              </p>
+            </li>
+          ))}
+        </ul>
       </div>
-
-      {/* list: lines only between rows */}
-      <ul>
-        {GROUPS.map((g, idx) => (
-          <li
-            key={g.title}
-            data-row
-            className="relative grid gap-3 py-5 md:py-6 lg:grid-cols-12 lg:items-baseline lg:gap-x-12"
-          >
-            {idx > 0 && <span data-line aria-hidden className="absolute left-0 top-0 h-px w-full bg-[#18364B]/20" />}
-
-            <div data-meta className="flex items-baseline gap-3 lg:col-span-4">
-              <span className={`${MONO} text-xs font-medium text-[#4F91C9]`}>{pad(idx + 1)}</span>
-              <h3 className="text-2xl font-bold leading-none tracking-[-0.04em] md:text-[2rem]">{g.title}</h3>
-            </div>
-
-            <ul className="group/list flex flex-wrap items-baseline gap-y-1 lg:col-span-8">
-              {g.items.map((t, i) => (
-                <li key={t} className="overflow-hidden pb-[0.1em]">
-                  <span data-item className="flex items-baseline">
-                    <span className="cursor-default text-lg font-medium leading-[1.3] tracking-[-0.02em] transition-[opacity,color] duration-300 group-hover/list:opacity-40 hover:!text-[#4F91C9] hover:!opacity-100 md:text-2xl">
-                      {t}
-                    </span>
-                    {i < g.items.length - 1 && (
-                      <span aria-hidden className="mx-3 text-lg font-light text-[#4F91C9] md:mx-4 md:text-2xl">
-                        /
-                      </span>
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </li>
-        ))}
-      </ul>
     </section>
   );
 }

@@ -1,5 +1,6 @@
 import About from "@/components/(HomePage)/About";
 import Approach from "@/components/(HomePage)/Approach";
+import EducationExperience from "@/components/(HomePage)/EducationExperience";
 import Footer from "@/components/(HomePage)/Footer";
 import Hero2 from "@/components/(HomePage)/Hero2";
 import Hero from "@/components/(HomePage)/Hero2";
@@ -22,8 +23,10 @@ export default function Home() {
 {/* <Hero7 />
 <Hero6 />
 <Hero5 /> */}
-<Hero3 />
+<Hero2 />
+{/* <Hero3 /> */}
 <About />
+<EducationExperience />
 <Milestones />
 {/* <Hero2 /> */}
 <Skills />

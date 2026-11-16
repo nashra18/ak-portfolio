@@ -1,427 +1,473 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Anton, Figtree } from "next/font/google";
+import { Manrope } from "next/font/google";
 
-gsap.registerPlugin(ScrollTrigger);
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["500", "600", "800"],
+  display: "swap",
+  variable: "--font-hero-display",
+});
 
-const display = Anton({ weight: "400", subsets: ["latin"], display: "swap", variable: "--font-hero-display" });
-const body = Figtree({ subsets: ["latin"], display: "swap", variable: "--font-hero-body" });
-const DISPLAY = "font-[family-name:var(--font-hero-display)]";
+/* One font only. DISPLAY and MONO point to the same Manrope variable,
+   so Stats and Testimonials keep working without changes. */
+export const VARS = manrope.variable;
+export const DISPLAY = "font-[family-name:var(--font-hero-display)]";
+export const MONO = "font-[family-name:var(--font-hero-display)] tabular-nums";
+
+const HIDDEN = "opacity-0 motion-reduce:opacity-100";
+const SPRING = "ease-[cubic-bezier(.22,1,.36,1)]";
+const useIso = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /*
-  Idea: the hero is a live traffic simulation.
-  Thousands of requests stream across the screen. Where the name is, they hit a
-  slow zone and pile up, so the name is literally a traffic jam you can read.
+  Palette
+  Obsidian #0B111B (bg) | Atlantic #253B56 (button border) | Ice Sheet #DFEAF5 (name, title)
+  Tangerine #FF895D (accent, grid dots) | Glacier #A8C8EB (grid lines, role, highlight) | Storm #657E9B (quiet)
 
-  - Move the cursor: it's a rate limiter. Requests it touches turn pink (429).
-  - Press / tap: a load spike. Traffic goes 5x faster, the name still holds.
-  - On load: the page starts as 503, then 502, then recovers to 200 OK.
-
-  Palette: black, white, one hot pink (#FF2D87).
+  Notes
+  - Refresh glitch fixes:
+    1. ASAD and KHAN are hidden in the markup too (HIDDEN), so the server HTML never flashes them
+       before GSAP moves them down.
+    2. The idle drift now starts the virtual pointer at its target instead of (0, 0),
+       so the mesh no longer gets yanked after about 1.5s.
+  - Grid animation logic is unchanged.
 */
 
-const PINK = "#FF2D87";
+const LINE = "#A8C8EB";
+const ACCENT = "#FF895D";
 
-const COPY =
-  "Backend developer building fast APIs, secure auth and clean data models in Java and Spring Boot, so the products on top can scale without breaking.";
+type G = { T: number };
 
-const STATS = [
-  { to: 700, suffix: "+", label: "LeetCode solved" },
-  { to: 6, suffix: "+", label: "GitHub projects" },
-  { to: 4, suffix: "+", label: "Certifications" },
-  { to: 2027, suffix: "", label: "Graduating" },
-];
+const rnd = (n: number) => {
+  const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return s - Math.floor(s);
+};
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
-export default function Hero2() {
-  const root = useRef<HTMLElement>(null);
-  const canvas = useRef<HTMLCanvasElement>(null);
+/* ---------- Spring-mesh grid that blooms out from the centre ---------- */
+
+function GridCanvas({ g }: { g: React.MutableRefObject<G> }) {
+  const cv = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const host = root.current;
-    const cv = canvas.current;
-    if (!host || !cv) return;
-    const ctx = cv.getContext("2d");
-    if (!ctx) return;
+    const canvas = cv.current;
+    const host = canvas?.parentElement;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !host || !ctx) return;
 
-    const statusEl = host.querySelector<HTMLElement>("[data-status]");
-    const rateEl = host.querySelector<HTMLElement>("[data-rate]");
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const fam = display.style.fontFamily || "Impact, sans-serif";
-
-    let alive = true;
-    let visible = true;
     let w = 0;
     let h = 0;
-    let N = 0;
-    let mw = 0;
-    let mask = new Uint8Array(0);
-    let X = new Float32Array(0); // x position
-    let Y = new Float32Array(0); // y position
-    let Y0 = new Float32Array(0); // home lane
-    let V = new Float32Array(0); // base speed
-    let S = new Float32Array(0); // current speed
-    let VY = new Float32Array(0); // vertical push from the cursor
-    let T = new Uint8Array(0); // 0 traffic, 1 inside the name, 2 rate limited
+    let nc = 0;
+    let nr = 0;
+    let minorA = 0.13;
+    let majorA = 0.34;
+    let xs: number[] = [];
+    let ys: number[] = [];
+    let ox = new Float32Array(0);
+    let oy = new Float32Array(0);
+    let vx = new Float32Array(0);
+    let vy = new Float32Array(0);
+    let vDelay: number[] = [];
+    let vDur: number[] = [];
+    let hDelay: number[] = [];
+    let hDur: number[] = [];
+    let visible = true;
 
-    const sim = { mask: 0, surge: 0 };
-    const ptr = { x: -9999, y: -9999, on: false };
-    const RING = 90;
-
-    /* ---- the name, rasterised once: this is the "slow zone" ---- */
-    const buildMask = () => {
-      mw = Math.ceil(w / 2);
-      const mh = Math.ceil(h / 2);
-      const oc = document.createElement("canvas");
-      oc.width = mw;
-      oc.height = mh;
-      const c = oc.getContext("2d");
-      if (!c) return;
-      c.scale(0.5, 0.5); // draw in CSS pixels
-      c.fillStyle = "#fff";
-      c.textAlign = "center";
-      c.textBaseline = "alphabetic";
-
-      const mobile = w < 768;
-      const lines = mobile ? ["ASAD", "KHAN"] : ["ASAD KHAN"];
-      c.font = `100px ${fam}`;
-      const widest = Math.max(...lines.map((l) => c.measureText(l).width));
-      const size = Math.min((w * 0.9 * 100) / widest, (h * 0.5) / (lines.length * 0.92));
-      c.font = `${size}px ${fam}`;
-
-      const cy = h * (mobile ? 0.44 : 0.47);
-      lines.forEach((l, i) => {
-        const y = cy + (i - (lines.length - 1) / 2) * size * 0.92 + size * 0.36;
-        c.fillText(l, w / 2, y);
-      });
-
-      const data = c.getImageData(0, 0, mw, mh).data;
-      mask = new Uint8Array(mw * mh);
-      for (let i = 0; i < mask.length; i++) mask[i] = data[i * 4 + 3] > 128 ? 1 : 0;
-    };
-
-    const init = () => {
-      w = host.clientWidth;
-      h = host.clientHeight;
+    const build = () => {
+      const r = host.getBoundingClientRect();
+      w = r.width;
+      h = r.height;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      cv.width = Math.round(w * dpr);
-      cv.height = Math.round(h * dpr);
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      N = Math.min(7500, Math.round((w * h) / 170));
-      X = new Float32Array(N);
-      Y = new Float32Array(N);
-      Y0 = new Float32Array(N);
-      V = new Float32Array(N);
-      S = new Float32Array(N);
-      VY = new Float32Array(N);
-      T = new Uint8Array(N);
-      for (let i = 0; i < N; i++) {
-        X[i] = Math.random() * w;
-        Y[i] = Y0[i] = Math.random() * h;
-        V[i] = 260 + Math.random() ** 2 * 1100;
-      }
-      buildMask();
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, w, h);
+      const phone = w < 768;
+      const cell = phone ? 46 : 40; // bigger cells on phones, so it never feels crowded
+      minorA = phone ? 0.08 : 0.12;
+      majorA = phone ? 0.24 : 0.3;
+      nc = Math.max(2, Math.round(w / cell));
+      nr = Math.max(2, Math.round(h / cell));
+      xs = Array.from({ length: nc + 1 }, (_, i) => (i * w) / nc);
+      ys = Array.from({ length: nr + 1 }, (_, j) => (j * h) / nr);
+      const N = (nc + 1) * (nr + 1);
+      ox = new Float32Array(N);
+      oy = new Float32Array(N);
+      vx = new Float32Array(N);
+      vy = new Float32Array(N);
+      // lines start at the centre and spread outwards
+      vDelay = xs.map((_, i) => (Math.abs(i - nc / 2) / (nc / 2)) * 1.1 + rnd(i + 1) * 0.25);
+      vDur = xs.map((_, i) => 1.1 + rnd(i + 50) * 0.4);
+      hDelay = ys.map((_, j) => 0.15 + (Math.abs(j - nr / 2) / (nr / 2)) * 1.1 + rnd(j + 100) * 0.25);
+      hDur = ys.map((_, j) => 1.2 + rnd(j + 150) * 0.4);
     };
+    build();
 
-    /* ---- physics ---- */
-    const advance = (dt: number) => {
-      const surgeK = 1 + sim.surge * 4;
-      const R2 = RING * RING;
-      const damp = Math.exp(-dt * 5);
-      const lane = Math.min(1, dt * 2.5);
-      for (let i = 0; i < N; i++) {
-        let x = X[i];
-        let y = Y[i];
-
-        const mx = (x * 0.5) | 0;
-        const my = (y * 0.5) | 0;
-        const inMask = x >= 0 && x < w && y >= 0 && y < h ? mask[my * mw + mx] : 0;
-        const inside = inMask * sim.mask;
-
-        const v = V[i] * surgeK * (1 - 0.95 * inside);
-        S[i] = v;
-        x += v * dt;
-
-        let type = inside > 0.5 ? 1 : 0;
-
-        if (ptr.on) {
-          const dx = x - ptr.x;
-          const dy = y - ptr.y;
-          const d2 = dx * dx + dy * dy;
-          if (d2 < R2) {
-            const d = Math.sqrt(d2) + 0.001;
-            VY[i] += (dy / d) * (1 - d / RING) * dt * 3500;
-            type = 2;
-          }
-        }
-
-        VY[i] *= damp;
-        y += VY[i] * dt;
-        y += (Y0[i] - y) * lane;
-
-        if (x > w + 60) {
-          x = -Math.random() * 60;
-          Y0[i] = Math.random() * h;
-          y = Y0[i];
-          VY[i] = 0;
-        }
-        X[i] = x;
-        Y[i] = y;
-        T[i] = type;
+    let lw = w;
+    let lh = h;
+    const ro = new ResizeObserver(() => {
+      const r = host.getBoundingClientRect();
+      if (Math.abs(r.width - lw) > 1 || Math.abs(r.height - lh) > 80) {
+        build();
+        lw = w;
+        lh = h;
       }
-    };
+    });
+    ro.observe(host);
 
-    const render = () => {
-      ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.fillRect(0, 0, w, h);
-      const p0 = new Path2D();
-      const p1 = new Path2D();
-      const p2 = new Path2D();
-      for (let i = 0; i < N; i++) {
-        const t = T[i];
-        if (t === 1) {
-          const len = Math.max(2, S[i] * 0.03);
-          p1.rect(X[i] - len, Y[i], len, 2);
-        } else if (t === 2) {
-          const len = Math.max(2, S[i] * 0.03);
-          p2.rect(X[i] - len, Y[i], len, 1.8);
-        } else {
-          const len = Math.max(1.5, S[i] * 0.035);
-          p0.rect(X[i] - len, Y[i], len, 1);
-        }
-      }
-      ctx.fillStyle = "rgba(255,255,255,0.22)";
-      ctx.fill(p0);
-      ctx.fillStyle = "#fff";
-      ctx.fill(p1);
-      ctx.fillStyle = PINK;
-      ctx.fill(p2);
+    let tx = 0;
+    let ty = 0;
+    let mx = 0;
+    let my = 0;
+    let pmx = 0;
+    let pmy = 0;
+    let cvx = 0;
+    let cvy = 0;
+    let moved = false;
+    let last = -1e9;
+    const waves: { x: number; y: number; t: number }[] = [];
 
-      if (ptr.on) {
-        ctx.strokeStyle = PINK;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(ptr.x, ptr.y, RING, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.fillStyle = PINK;
-        ctx.font = "600 12px ui-sans-serif, system-ui, sans-serif";
-        ctx.fillText("429", ptr.x + RING * 0.72, ptr.y - RING * 0.72);
-      }
-    };
-
-    /* ---- events ---- */
     const onMove = (e: PointerEvent) => {
       const r = host.getBoundingClientRect();
-      ptr.x = e.clientX - r.left;
-      ptr.y = e.clientY - r.top;
-      ptr.on = true;
-    };
-    const onLeave = () => (ptr.on = false);
-    const onDown = () => gsap.to(sim, { surge: 1, duration: 0.3, ease: "power2.out", overwrite: "auto" });
-    const onUp = () => gsap.to(sim, { surge: 0, duration: 1.4, ease: "power3.out", overwrite: "auto" });
-
-    let lastRate = 0;
-    const tick = (_time: number, delta: number) => {
-      if (!visible || !alive || !N) return;
-      advance(Math.min(delta / 1000, 0.05));
-      render();
-      const now = performance.now();
-      if (rateEl && now - lastRate > 120) {
-        lastRate = now;
-        const base = 12400 + 700 * Math.sin(now / 900) + 300 * Math.sin(now / 230);
-        rateEl.textContent = Math.round(base * (1 + sim.surge * 5)).toLocaleString("en-US");
+      tx = e.clientX - r.left;
+      ty = e.clientY - r.top;
+      last = performance.now();
+      if (!moved) {
+        moved = true;
+        mx = pmx = tx;
+        my = pmy = ty;
       }
     };
-
+    const onDown = (e: PointerEvent) => {
+      if ((e.target as HTMLElement).closest("a")) return;
+      const r = host.getBoundingClientRect();
+      if (e.clientY < r.top || e.clientY > r.bottom) return;
+      waves.push({ x: e.clientX - r.left, y: e.clientY - r.top, t: 0 });
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerdown", onDown, { passive: true });
     const io = new IntersectionObserver(([e]) => (visible = e.isIntersecting));
     io.observe(host);
 
-    let ro: ResizeObserver | null = null;
-    let tickerOn = false;
+    /* physics */
+    const integrate = (time: number, dt: number, idle: boolean) => {
+      const R = w < 768 ? 150 : 200;
+      const LIMIT = 80;
+      const gain = idle ? 0.55 : 1;
+      const stride = nr + 1;
 
-    const start = () => {
-      if (!alive) return;
-      init();
+      for (let i = 0; i <= nc; i++) {
+        for (let j = 0; j <= nr; j++) {
+          const k = i * stride + j;
+          const px = xs[i] + ox[k];
+          const py = ys[j] + oy[k];
 
-      if (reduce) {
-        sim.mask = 1;
-        for (let i = 0; i < 300; i++) advance(0.016);
-        render();
-        if (statusEl) statusEl.textContent = "200 OK";
-        return;
+          if (moved) {
+            const dx = px - mx;
+            const dy = py - my;
+            const d = Math.hypot(dx, dy);
+            if (d < R) {
+              const f = (1 - d / R) ** 2 * gain;
+              vx[k] += (cvx * 0.16 + (dx / (d || 1)) * 0.9) * f * dt;
+              vy[k] += (cvy * 0.16 + (dy / (d || 1)) * 0.9) * f * dt;
+            }
+          }
+
+          vx[k] += Math.sin(time * 0.7 + j * 0.35 + i * 0.12) * 0.012 * dt;
+          vy[k] += Math.cos(time * 0.6 + i * 0.3 + j * 0.1) * 0.012 * dt;
+
+          let ax = 0;
+          let ay = 0;
+          let c = 0;
+          if (i > 0) { ax += ox[k - stride]; ay += oy[k - stride]; c++; }
+          if (i < nc) { ax += ox[k + stride]; ay += oy[k + stride]; c++; }
+          if (j > 0) { ax += ox[k - 1]; ay += oy[k - 1]; c++; }
+          if (j < nr) { ax += ox[k + 1]; ay += oy[k + 1]; c++; }
+          vx[k] += (-ox[k] * 0.035 + (ax / c - ox[k]) * 0.12) * dt;
+          vy[k] += (-oy[k] * 0.035 + (ay / c - oy[k]) * 0.12) * dt;
+        }
       }
 
-      // intro: flood, then the name resolves out of the traffic
-      sim.surge = 1;
-      sim.mask = 0;
-      if (statusEl) statusEl.textContent = "503";
-      gsap.to(sim, { surge: 0, duration: 2.4, delay: 0.2, ease: "power3.out" });
-      gsap.to(sim, { mask: 1, duration: 2.6, delay: 0.6, ease: "power2.inOut" });
-      gsap.delayedCall(1.0, () => statusEl && (statusEl.textContent = "502"));
-      gsap.delayedCall(2.0, () => statusEl && (statusEl.textContent = "200 OK"));
+      for (let n = waves.length - 1; n >= 0; n--) {
+        const wv = waves[n];
+        wv.t += 0.0167 * dt;
+        if (wv.t > 2.8) {
+          waves.splice(n, 1);
+          continue;
+        }
+        const front = wv.t * 640;
+        const fade = Math.exp(-wv.t * 1.3);
+        for (let i = 0; i <= nc; i++) {
+          for (let j = 0; j <= nr; j++) {
+            const k = i * stride + j;
+            const dx = xs[i] + ox[k] - wv.x;
+            const dy = ys[j] + oy[k] - wv.y;
+            const d = Math.hypot(dx, dy) || 1;
+            const e = Math.exp(-(((d - front) / 38) ** 2)) * fade * 2.4 * dt;
+            vx[k] += (dx / d) * e;
+            vy[k] += (dy / d) * e;
+          }
+        }
+      }
 
-      // counters
-      host.querySelectorAll<HTMLElement>("[data-count]").forEach((n) => {
-        const to = Number(n.dataset.to);
-        const o = { v: to > 1000 ? to - 25 : 0 };
-        gsap.to(o, {
-          v: to,
-          duration: 2.2,
-          delay: 0.4,
-          ease: "expo.out",
-          onUpdate: () => (n.textContent = String(Math.round(o.v))),
-          onComplete: () => (n.textContent = String(to)),
-        });
-      });
-
-      host.addEventListener("pointermove", onMove, { passive: true });
-      host.addEventListener("pointerleave", onLeave);
-      host.addEventListener("pointerdown", onDown);
-      window.addEventListener("pointerup", onUp);
-      gsap.ticker.add(tick);
-      tickerOn = true;
-
-      let t: ReturnType<typeof setTimeout>;
-      ro = new ResizeObserver(() => {
-        clearTimeout(t);
-        t = setTimeout(() => alive && init(), 150);
-      });
-      ro.observe(host);
+      const damp = Math.pow(0.9, dt);
+      for (let k = 0; k < vx.length; k++) {
+        vx[k] *= damp;
+        vy[k] *= damp;
+        ox[k] = Math.max(-LIMIT, Math.min(LIMIT, ox[k] + vx[k] * dt));
+        oy[k] = Math.max(-LIMIT, Math.min(LIMIT, oy[k] + vy[k] * dt));
+      }
     };
 
-    document.fonts
-      .load(`100px ${fam}`)
-      .catch(() => undefined)
-      .then(start);
+    const step = (time: number, dt: number) => {
+      const idle = performance.now() - last > 2200;
+      if (idle && g.current.T > 1.5) {
+        tx = w * (0.5 + 0.33 * Math.sin(time * 0.55));
+        ty = h * (0.5 + 0.28 * Math.sin(time * 0.77 + 1.3));
+        // start the virtual pointer at its target, so the mesh is not yanked from (0, 0)
+        if (!moved) {
+          moved = true;
+          mx = pmx = tx;
+          my = pmy = ty;
+        }
+      }
+      if (moved) {
+        const k = 1 - Math.exp(-dt * 0.11);
+        mx += (tx - mx) * k;
+        my += (ty - my) * k;
+        const vk = 1 - Math.exp(-dt * 0.3);
+        cvx += ((mx - pmx) / dt - cvx) * vk;
+        cvy += ((my - pmy) / dt - cvy) * vk;
+      }
+      pmx = mx;
+      pmy = my;
+
+      const n = Math.max(1, Math.ceil(dt / 0.8));
+      const sub = dt / n;
+      for (let s = 0; s < n; s++) integrate(time, sub, idle);
+    };
+
+    /* drawing */
+    const pointAt = (vertical: boolean, line: number, f: number): [number, number] => {
+      const n = vertical ? nr : nc;
+      const m = Math.min(n - 1, Math.floor(f));
+      const t = f - m;
+      const at = (q: number): [number, number] => {
+        const k = vertical ? line * (nr + 1) + q : q * (nr + 1) + line;
+        const i = vertical ? line : q;
+        const j = vertical ? q : line;
+        return [xs[i] + ox[k], ys[j] + oy[k]];
+      };
+      const [ax, ay] = at(m);
+      const [bx, by] = at(m + 1);
+      return [ax + (bx - ax) * t, ay + (by - ay) * t];
+    };
+
+    const trace = (vertical: boolean, line: number, a: number, b: number) => {
+      const n = vertical ? nr : nc;
+      const fa = a * n;
+      const fb = b * n;
+      const pts: number[] = [];
+      pts.push(...pointAt(vertical, line, fa));
+      for (let m = Math.floor(fa) + 1; m < fb; m++) pts.push(...pointAt(vertical, line, m));
+      pts.push(...pointAt(vertical, line, fb));
+      ctx.moveTo(pts[0], pts[1]);
+      for (let p = 2; p < pts.length - 2; p += 2) {
+        ctx.quadraticCurveTo(pts[p], pts[p + 1], (pts[p] + pts[p + 2]) / 2, (pts[p + 1] + pts[p + 3]) / 2);
+      }
+      ctx.lineTo(pts[pts.length - 2], pts[pts.length - 1]);
+    };
+
+    const draw = () => {
+      ctx.clearRect(0, 0, w, h);
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.strokeStyle = LINE;
+      const { T } = g.current;
+      const heads: [number, number][] = [];
+
+      const line = (vertical: boolean, idx: number, delay: number, dur: number) => {
+        const raw = clamp01((T - delay) / dur);
+        if (raw <= 0) return;
+        const p = easeOut(raw);
+        const settle = clamp01((T - delay - dur) / 1.2);
+        const base = idx % 4 === 0 ? majorA : minorA;
+        ctx.globalAlpha = base + 0.4 * (1 - settle);
+        ctx.lineWidth = 1 + 0.25 * (1 - settle);
+        ctx.beginPath();
+        trace(vertical, idx, 0.5 - p / 2, 0.5 + p / 2);
+        ctx.stroke();
+        if (p < 1) {
+          const n = vertical ? nr : nc;
+          heads.push(pointAt(vertical, idx, (0.5 - p / 2) * n), pointAt(vertical, idx, (0.5 + p / 2) * n));
+        }
+      };
+      for (let i = 0; i <= nc; i++) line(true, i, vDelay[i], vDur[i]);
+      for (let j = 0; j <= nr; j++) line(false, j, hDelay[j], hDur[j]);
+
+      ctx.fillStyle = ACCENT;
+      ctx.globalAlpha = 0.95;
+      heads.forEach(([x, y]) => ctx.fillRect(x - 2.5, y - 2.5, 5, 5));
+
+      // markers light up only where the cloth is moving
+      const live = clamp01((T - 1.5) / 1.5);
+      if (live > 0) {
+        const stride = nr + 1;
+        for (let i = 0; i <= nc; i++) {
+          for (let j = 0; j <= nr; j++) {
+            const k = i * stride + j;
+            const disp = Math.hypot(ox[k], oy[k]);
+            if (disp < 2) continue;
+            const s = Math.min(6, 1 + disp * 0.1);
+            ctx.globalAlpha = Math.min(1, disp / 16) * live;
+            ctx.fillRect(xs[i] + ox[k] - s / 2, ys[j] + oy[k] - s / 2, s, s);
+          }
+        }
+      }
+      ctx.globalAlpha = 1;
+    };
+
+    const tick = (time: number, deltaTime: number) => {
+      if (!visible) return;
+      const dt = Math.min(3, Math.max(0.2, deltaTime / 16.667));
+      if (!reduce) step(time, dt);
+      draw();
+    };
+    gsap.ticker.add(tick);
 
     return () => {
-      alive = false;
+      gsap.ticker.remove(tick);
       io.disconnect();
-      ro?.disconnect();
-      if (tickerOn) gsap.ticker.remove(tick);
-      host.removeEventListener("pointermove", onMove);
-      host.removeEventListener("pointerleave", onLeave);
-      host.removeEventListener("pointerdown", onDown);
-      window.removeEventListener("pointerup", onUp);
-      gsap.killTweensOf(sim);
+      ro.disconnect();
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerdown", onDown);
     };
+  }, [g]);
+
+  return <canvas ref={cv} aria-hidden className="pointer-events-none absolute inset-0 size-full" />;
+}
+
+/* ---------- Buttons: icon sits right next to the label ---------- */
+
+function Btn({ href, children, ghost, download }: { href: string; children: React.ReactNode; ghost?: boolean; download?: boolean }) {
+  const icon = `size-4 shrink-0 transition-transform duration-500 ${SPRING}`;
+  return (
+    <a
+      href={href}
+      download={download}
+      className={`group inline-flex h-12 w-fit items-center justify-center gap-2 whitespace-nowrap rounded-full px-6 text-sm font-semibold leading-none transition-transform duration-500 ${SPRING} hover:-translate-y-0.5 active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FF895D] md:h-14 md:px-8 md:text-base ${
+        ghost
+          ? "border border-[#253B56] bg-[#0B111B]/60 text-[#DFEAF5] hover:border-[#657E9B]"
+          : "bg-[#FF895D] text-[#0B111B]"
+      }`}
+    >
+      {children}
+      {ghost ? (
+        <svg viewBox="0 0 24 24" className={`${icon} group-hover:translate-y-0.5`} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M12 4v11M7 10.5l5 5 5-5M5 20h14" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" className={`${icon} group-hover:translate-x-0.5`} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
+      )}
+    </a>
+  );
+}
+
+/* ---------- Hero ---------- */
+
+export default function Hero3() {
+  const root = useRef<HTMLElement>(null);
+  const g = useRef<G>({ T: 0 });
+
+  useIso(() => {
+    const el = root.current;
+    if (!el) return;
+    const q = gsap.utils.selector(el);
+    const mm = gsap.matchMedia();
+
+    mm.add("(prefers-reduced-motion: no-preference)", () => {
+      // opacity: 1 overrides the HIDDEN class, so the words show up only once they are in position below the mask
+      gsap.set(q("[data-line]"), { yPercent: 105, opacity: 1 });
+      gsap.set(q("[data-fade]"), { opacity: 0, y: 12 });
+
+      const tl = gsap.timeline({ delay: 0.1 });
+      tl.to(g.current, { T: 4.4, duration: 4.4, ease: "none" }, 0) // grid blooms out from the centre
+        .to(q("[data-line]"), { yPercent: 0, duration: 1, ease: "expo.out", stagger: 0.1 }, 0)
+        .to(q("[data-fade]"), { opacity: 1, y: 0, duration: 0.7, ease: "power3.out", stagger: 0.08 }, 0.5);
+
+      return () => {
+        tl.kill();
+      };
+    });
+
+    mm.add("(prefers-reduced-motion: reduce)", () => {
+      g.current.T = 10;
+    });
+
+    return () => mm.revert();
   }, []);
 
   return (
     <header
       ref={root}
       id="top"
-      className={`${display.variable} ${body.variable} relative isolate flex min-h-[100svh] flex-col justify-between overflow-clip bg-black font-[family-name:var(--font-hero-body)] text-white antialiased`}
+      className={`${VARS} ${DISPLAY} relative isolate flex min-h-[100svh] flex-col justify-between gap-10 overflow-clip bg-[#0B111B] px-5 pb-10 pt-24 text-[#DFEAF5] antialiased selection:bg-[#FF895D] selection:text-[#0B111B] md:justify-end md:gap-[min(4vw,5vh)] md:px-12 md:pb-12 md:pt-14 lg:px-16`}
     >
-      <canvas ref={canvas} aria-hidden className="absolute inset-0 -z-10 h-full w-full" />
-      <h1 className="sr-only">Asad Khan</h1>
+      <GridCanvas g={g} />
 
-      {/* top: numbers + live status */}
-      <div className="flex flex-col gap-4 px-5 pt-5 md:flex-row md:items-start md:justify-between md:px-10 md:pt-8">
-        <dl className="flex gap-4 md:gap-10">
-          {STATS.map((s) => (
-            <div key={s.label} className="flex flex-col gap-1">
-              <dd className={`${DISPLAY} flex text-[1.6rem] leading-none md:text-[2.4rem]`}>
-                <span data-count data-to={s.to}>
-                  {s.to}
-                </span>
-                {s.suffix}
-              </dd>
-              <dt className="text-[10px] leading-tight text-white/60 md:text-sm">{s.label}</dt>
-            </div>
-          ))}
-        </dl>
+      {/* Name: ASAD left, KHAN right. Role and status sit beside KHAN on desktop. */}
+      <h1
+        aria-label="Asad Khan"
+        className="relative z-10 flex select-none flex-col gap-2 text-[27vw] font-extrabold leading-[0.82] tracking-[-0.05em] md:gap-0 md:pr-14 md:text-[length:min(17vw,22vh)]"
+      >
+        <span aria-hidden className="block self-start overflow-hidden pb-[0.04em]">
+          <span data-line className={`block will-change-transform ${HIDDEN}`}>ASAD</span>
+        </span>
 
-        <div className="flex items-baseline gap-4 text-sm md:flex-col md:items-end md:gap-1" aria-hidden>
-          <span data-status className={`${DISPLAY} text-[1.6rem] leading-none md:text-[2.4rem]`}>
-            200 OK
-          </span>
-          <span className="text-white/60">
-            <span data-rate>12,400</span> req/s
-          </span>
-        </div>
-      </div>
-
-      {/* bottom: copy + actions, on a black fade so traffic never hurts readability */}
-      <div className="flex flex-col gap-6 bg-gradient-to-t from-black via-black/85 to-transparent px-5 pb-5 pt-24 md:flex-row md:items-end md:justify-between md:gap-16 md:px-10 md:pb-8">
-        <p className="max-w-[36ch] text-[15px] font-medium leading-snug md:text-lg">{COPY}</p>
-        <div className="flex items-center gap-3">
-          <a
-            href="#projects"
-            className="inline-flex items-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-black outline-offset-4 transition-colors duration-300 hover:bg-[#FF2D87] hover:text-white focus-visible:outline-2 focus-visible:outline-[#FF2D87] md:text-base"
+        <span className="flex flex-col gap-6 md:w-[min(7.2em,100%)] md:flex-row md:items-end md:justify-between">
+          <span
+            data-fade
+            className={`order-2 flex flex-col gap-3 text-base font-semibold leading-none tracking-normal md:order-1 md:pb-[1.6vw] md:text-[length:min(1.7vw,2.6vh)] ${HIDDEN}`}
           >
-            View projects
-          </a>
-          <a
-            href="/resume.pdf"
-            download
-            className="px-2 py-3 text-sm font-semibold underline decoration-2 underline-offset-[6px] outline-offset-4 transition-colors hover:text-[#FF2D87] focus-visible:outline-2 focus-visible:outline-[#FF2D87] md:text-base"
-          >
+            <span className="whitespace-nowrap text-[#A8C8EB]">
+              Backend developer <span className="text-[#657E9B]">and freelancer</span>
+            </span>
+            <span className="inline-flex items-center gap-2 text-[0.8em] font-medium text-[#657E9B]">
+              <span aria-hidden className="size-1.5 rounded-full bg-[#FF895D]" />
+              Open to work
+            </span>
+          </span>
+
+          <span aria-hidden className="order-1 block self-end overflow-hidden pb-[0.04em] md:order-2">
+            <span data-line className={`block will-change-transform ${HIDDEN}`}>KHAN</span>
+          </span>
+        </span>
+      </h1>
+
+      {/* Title and actions */}
+      <div className="relative z-10 flex flex-col gap-8 md:flex-row md:items-end md:justify-between md:gap-12 md:pr-14">
+        <p
+          data-fade
+          className={`max-w-[24ch] text-[length:clamp(1.6rem,7vw,2.1rem)] font-semibold leading-[1.12] tracking-[-0.03em] text-[#DFEAF5] md:max-w-[28ch] md:text-[length:min(2.9vw,5vh)] md:leading-[1.1] ${HIDDEN}`}
+        >
+          I build the <span className="text-[#A8C8EB]">part of the product</span> nobody sees, and make sure it never lets anyone down.
+        </p>
+
+        <div data-fade className={`flex flex-row flex-wrap gap-3 ${HIDDEN}`}>
+          <Btn href="#projects">View projects</Btn>
+          <Btn href="/resume.pdf" download ghost>
             Resume
-          </a>
+          </Btn>
         </div>
       </div>
     </header>
   );
 }
 
-/* ---------- Testimonials (placeholders: replace before publishing) ---------- */
-
-const TESTIMONIALS = [
-  { quote: "Replace this with a real quote from a client or teammate.", name: "Name", role: "Role, Company" },
-  { quote: "Keep it to one or two sentences about the work you delivered.", name: "Name", role: "Role, Company" },
-  { quote: "Short, specific and honest reads best.", name: "Name", role: "Role, Company" },
-];
-
-export function Testimonials() {
-  const ref = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const mm = gsap.matchMedia();
-    mm.add("(prefers-reduced-motion: no-preference)", () => {
-      gsap.fromTo(
-        gsap.utils.toArray<HTMLElement>("[data-item]", el),
-        { opacity: 0, y: 40 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.9,
-          ease: "power3.out",
-          stagger: 0.12,
-          scrollTrigger: { trigger: el, start: "top 75%", once: true },
-        }
-      );
-    });
-    return () => mm.revert();
-  }, []);
-
-  return (
-    <section
-      ref={ref}
-      id="testimonials"
-      aria-labelledby="testimonials-title"
-      className={`${display.variable} ${body.variable} bg-black px-5 py-16 font-[family-name:var(--font-hero-body)] text-white antialiased md:px-10 md:py-24`}
-    >
-      <h2 id="testimonials-title" className={`${DISPLAY} text-[clamp(3.5rem,14vw,11rem)] leading-[0.9]`}>
-        KIND WORDS<span className="text-[#FF2D87]">.</span>
-      </h2>
-      <div className="mt-10 grid gap-8 md:mt-16 md:grid-cols-3 md:gap-10">
-        {TESTIMONIALS.map((t, i) => (
-          <figure key={i} data-item className="flex flex-col gap-6 border-t border-white/30 pt-4">
-            <blockquote className="text-xl font-medium leading-snug md:text-2xl">{t.quote}</blockquote>
-            <figcaption className="text-sm text-white/60">
-              {t.name}, {t.role}
-            </figcaption>
-          </figure>
-        ))}
-      </div>
-    </section>
-  );
-}
+/* Keep your existing Stats and Testimonials components below this line, unchanged.
+   They use VARS, DISPLAY and MONO, which are exported from this file. */
