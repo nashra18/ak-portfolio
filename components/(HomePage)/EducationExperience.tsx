@@ -5,18 +5,19 @@
  * Needs: next (next/font), gsap (ScrollTrigger), Tailwind.
  *
  * Palette
- * Obsidian #0B111B (bg) | Atlantic #253B56 (borders) | Ice Sheet #DFEAF5 (main text)
- * Tangerine #FF895D (accent) | Glacier #A8C8EB (highlights) | Storm #657E9B (quiet text)
+ * Obsidian #0B111B (bg) | Ice Sheet #DFEAF5 (main text) | Glacier #A8C8EB (place)
+ * Tangerine #FF895D (period, selection) | Storm #657E9B (quiet text)
  *
- * Hierarchy (one font, three weights):
- * L1  Page title        800, huge          (matches "About me")
- * L2  Role / degree     800, large         (the strongest thing in each block)
- * L3  Place             600, Glacier       (supporting)
- * L4  Period, labels    600, small caps    (metadata)
- * L5  Body              500, Storm         (quiet)
+ * Weight hierarchy (one font, three weights):
+ * L1  Block title (Education, Experience)  800, huge, Ice Sheet
+ * L2  Degree / role                        600, medium, Ice Sheet at 75% (dimmed)
+ * L3  College / company                    500, small, Glacier at 80%
+ * L4  Period, SGPA label                   600, tiny caps, Tangerine / Storm
+ * L5  Body                                 500, Storm, key words 600 in Ice Sheet
  *
- * Layout: label column on the left, content on the right (desktop). Stacked on phones.
- * No divider lines. Space and size do the separating.
+ * Every piece of information appears exactly once.
+ * Layout: title on the left, details on the right (desktop). Stacked on phones.
+ * No cards, no divider lines, no icons, no numbering. Space and size do the separating.
  * Motion: one soft fade-up per block when it enters the screen. Nothing else moves.
  */
 
@@ -93,42 +94,38 @@ function Hi({ text, words, className }: { text: string; words: string[]; classNa
   );
 }
 
-/** Period shown as small spaced capitals in Glacier. No box, no lines. */
-function Period({ children }: { children: string }) {
+/** One block: big title on the left, details on the right */
+function Block({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <span
-      data-fade
-      className={`w-fit text-[11px] font-semibold uppercase leading-none tracking-[0.18em] text-[#FF895D] md:text-xs ${HIDDEN}`}
-    >
-      {children}
-    </span>
-  );
-}
-
-/** One block: label column on the left, content on the right */
-function Block({ index, label, children }: { index: string; label: string; children: ReactNode }) {
-  return (
-    <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,2.4fr)] md:gap-16">
-      <div data-fade className={`flex items-baseline gap-3 md:flex-col md:gap-3 ${HIDDEN}`}>
-        <span className="text-sm font-extrabold tabular-nums tracking-[-0.02em] text-[#FF895D] md:text-base">{index}</span>
-        <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-[#657E9B] md:text-sm">{label}</h3>
-      </div>
-      <div className="flex flex-col gap-5 md:gap-6">{children}</div>
+    <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)] md:gap-16">
+      <h2
+        data-fade
+        className={`select-none text-[length:clamp(2.5rem,12vw,3.5rem)] font-extrabold leading-[0.95] tracking-[-0.055em] text-[#DFEAF5] md:text-[length:min(6vw,10vh)] ${HIDDEN}`}
+      >
+        {title}
+      </h2>
+      <div className="flex flex-col gap-6 md:gap-8 md:pt-[0.6vw]">{children}</div>
     </div>
   );
 }
 
-/** Role or degree (strongest), then place (supporting) */
-function Heading({ title, place }: { title: string; place: string }) {
+/** Period (tiny caps), degree or role (dimmed, medium), place (small, supporting) */
+function Heading({ period, title, place }: { period: string; title: string; place: string }) {
   return (
-    <div className="flex flex-col gap-2 md:gap-3">
-      <h4
+    <div className="flex flex-col gap-2.5 md:gap-3">
+      <span
         data-fade
-        className={`text-[length:clamp(1.6rem,7vw,2.25rem)] font-extrabold leading-[1.05] tracking-[-0.045em] text-[#DFEAF5] md:text-[length:min(3.6vw,6vh)] ${HIDDEN}`}
+        className={`w-fit text-[11px] font-semibold uppercase leading-none tracking-[0.18em] text-[#FF895D] md:text-xs ${HIDDEN}`}
+      >
+        {period}
+      </span>
+      <h3
+        data-fade
+        className={`text-[length:clamp(1.15rem,5vw,1.4rem)] font-semibold leading-[1.2] tracking-[-0.03em] text-[#DFEAF5]/75 md:text-[length:min(1.9vw,3.2vh)] ${HIDDEN}`}
       >
         {title}
-      </h4>
-      <p data-fade className={`text-base font-semibold leading-[1.3] tracking-[-0.01em] text-[#A8C8EB] md:text-xl ${HIDDEN}`}>
+      </h3>
+      <p data-fade className={`text-sm font-medium leading-[1.3] text-[#A8C8EB]/80 md:text-base ${HIDDEN}`}>
         {place}
       </p>
     </div>
@@ -164,55 +161,38 @@ export default function EducationExperience() {
       id="experience"
       className={`${manrope.variable} ${DISPLAY} relative isolate overflow-clip bg-[#0B111B] text-[#DFEAF5] antialiased selection:bg-[#FF895D] selection:text-[#0B111B]`}
     >
-      <div className="mx-auto w-full max-w-[90rem] px-5 pb-20 pt-20 md:px-12 md:pb-28 md:pt-28 lg:px-16">
-        {/* L1: page title */}
-        <h2
-          data-fade
-          className={`select-none text-[11vw] font-extrabold leading-[0.9] tracking-[-0.055em] text-[#DFEAF5] md:text-[length:min(8vw,12vh)] ${HIDDEN}`}
-        >
-          Education <span className="text-[#657E9B]">and</span> Experience
-        </h2>
+      <div className="mx-auto flex w-full max-w-[90rem] flex-col gap-20 px-5 pb-20 pt-20 md:gap-32 md:px-12 md:pb-28 md:pt-28 lg:px-16">
+        {/* Education */}
+        <Block title="Education">
+          <Heading period={DATA.education.period} title={DATA.education.degree} place={DATA.education.college} />
 
-        <div className="mt-12 flex flex-col gap-16 md:mt-20 md:gap-28">
-          {/* Education */}
-          <Block index="01" label="Education">
-            <Period>{DATA.education.period}</Period>
-            <Heading title={DATA.education.degree} place={DATA.education.college} />
+          <p data-fade className={`flex items-baseline gap-3 ${HIDDEN}`}>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#657E9B] md:text-xs">SGPA</span>
+            <span className="text-4xl font-extrabold leading-none tracking-[-0.05em] tabular-nums text-[#DFEAF5] md:text-5xl">
+              {DATA.education.sgpa}
+            </span>
+          </p>
+        </Block>
 
-            <dl data-fade className={`mt-2 flex w-fit flex-col gap-2 ${HIDDEN}`}>
-              <dt className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#657E9B] md:text-xs">SGPA</dt>
-              <dd className="text-5xl font-extrabold leading-none tracking-[-0.05em] tabular-nums text-[#DFEAF5] md:text-7xl">
-                {DATA.education.sgpa}
-              </dd>
-            </dl>
-          </Block>
+        {/* Experience */}
+        <Block title="Experience">
+          <Heading period={DATA.experience.period} title={DATA.experience.role} place={DATA.experience.company} />
 
-          {/* Experience */}
-          <Block index="02" label="Experience">
-            <Period>{DATA.experience.period}</Period>
-            <Heading title={DATA.experience.role} place={DATA.experience.company} />
+          <div className="flex max-w-2xl flex-col gap-5 md:gap-6">
+            {DATA.experience.points.map((p) => (
+              <p key={p} data-fade className={`text-[15px] font-medium leading-[1.7] text-[#657E9B] md:text-lg ${HIDDEN}`}>
+                <Hi text={p} words={["backend development", "RESTful APIs", "Java"]} className="font-semibold text-[#DFEAF5]" />
+              </p>
+            ))}
+          </div>
 
-            <ul className="mt-2 flex max-w-3xl flex-col gap-6 md:gap-8">
-              {DATA.experience.points.map((p, i) => (
-                <li key={p} data-fade className={`grid grid-cols-[2.25rem_1fr] gap-x-2 md:grid-cols-[3rem_1fr] ${HIDDEN}`}>
-                  <span className="pt-[0.3em] text-xs font-extrabold tabular-nums text-[#FF895D] md:text-sm">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <span className="text-[15px] font-medium leading-[1.65] text-[#657E9B] md:text-lg">
-                    <Hi text={p} words={["backend development", "RESTful APIs", "Java"]} className="font-semibold text-[#DFEAF5]" />
-                  </span>
-                </li>
-              ))}
-            </ul>
-
-            <div data-fade className={`mt-2 ${HIDDEN}`}>
-              <a href={DATA.certificate.href} target="_blank" rel="noopener noreferrer" className={BTN_GHOST}>
-                {DATA.certificate.label}
-                <ArrowUpRight />
-              </a>
-            </div>
-          </Block>
-        </div>
+          <div data-fade className={HIDDEN}>
+            <a href={DATA.certificate.href} target="_blank" rel="noopener noreferrer" className={BTN_GHOST}>
+              {DATA.certificate.label}
+              <ArrowUpRight />
+            </a>
+          </div>
+        </Block>
       </div>
     </section>
   );

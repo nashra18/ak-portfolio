@@ -12,7 +12,7 @@
  * Each row: number, group title on the left, skills on the right.
  * Space and size do the separating.
  *
- * Phone hierarchy: number sits beside the title, title is big and heavy (800), skills are small, light (500) and softer in colour.
+ * Phone hierarchy: number sits beside the title, title is heavy (800), skills are small, light (500) and softer in colour.
  *
  * Every piece of information appears exactly once.
  * Layout: title and intro on top, then one row per group. Stacked on phones.
@@ -104,7 +104,7 @@ export function Skills() {
                 <span className="text-sm font-extrabold tabular-nums tracking-[-0.02em] text-[#A8C8EB] md:text-sm md:font-semibold md:tracking-normal">
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <h3 className="text-[2rem] font-extrabold leading-[1] tracking-[-0.05em] text-[#DFEAF5] md:text-[length:min(2.4vw,4.2vh)] md:tracking-[-0.045em]">
+                <h3 className="text-[1.5rem] font-extrabold leading-[1] tracking-[-0.045em] text-[#DFEAF5] md:text-[length:min(2.4vw,4.2vh)]">
                   {g.title}
                 </h3>
               </div>

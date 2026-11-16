@@ -180,7 +180,7 @@ export default function About() {
       id="about"
       className={`${manrope.variable} ${DISPLAY} relative isolate overflow-clip bg-[#0B111B] text-[#DFEAF5] antialiased selection:bg-[#FF895D] selection:text-[#0B111B]`}
     >
-      <div className="mx-auto flex w-full max-w-[90rem] flex-col gap-8 px-5 pb-6 pt-32 md:block md:px-12 md:pb-4 md:pt-36 lg:px-16 lg:pb-[1.5vw]">
+      <div className="mx-auto flex w-full max-w-[90rem] flex-col gap-10 px-5 pb-16 pt-32 md:block md:px-12 md:pb-4 md:pt-36 lg:px-16 lg:pb-[1.5vw]">
         {/* Title: one line */}
         <h2
           data-fade
