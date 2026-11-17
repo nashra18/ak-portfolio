@@ -1,97 +1,90 @@
 "use client";
 
 /**
- * Philosophy section, same theme as About. Just one paragraph.
- * Needs: next (next/font), gsap (ScrollTrigger), Tailwind.
+ * Philosophy. Two short parts: what I believe, and what I can do for you.
+ * Needs: next (next/font), Tailwind. No animation library.
  *
  * Palette
- * Obsidian #0B111B (bg) | Atlantic #253B56 (borders) | Ice Sheet #DFEAF5 (main text)
- * Tangerine #FF895D (accent) | Glacier #A8C8EB (highlights) | Storm #657E9B (quiet text)
+ * Obsidian #0B111B (bg) | Ice Sheet #DFEAF5 (key words) | Glacier #A8C8EB (body)
+ * Storm #657E9B (supporting line) | Tangerine #FF895D (text selection only)
  *
- * Type scale (one font, three weights): 800 key words, 600 headline.
- * Motion: the paragraph lights up word by word as it comes into view. Plays once.
+ * Readable but calm: a medium headline, one smaller supporting line.
+ * Wrap a key phrase in **double stars** to make it brighter.
+ * Motion: one soft fade when it comes into view. Plays once, skipped for reduced motion.
  */
 
 import { Manrope } from "next/font/google";
-import { useEffect, useLayoutEffect, useRef } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-
-gsap.registerPlugin(ScrollTrigger);
+import { useEffect, useRef, useState } from "react";
 
 const manrope = Manrope({
   subsets: ["latin"],
   weight: ["500", "600", "800"],
   display: "swap",
-  variable: "--font-phil-display",
 });
-
-const DISPLAY = "font-[family-name:var(--font-phil-display)]";
-const useIso = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /* Content: edit here */
 
-const TEXT =
-  "I build backend systems with a focus on reliability, security, and simplicity. Every API, every data model, every decision should make the product stronger, so it can grow without becoming harder to maintain.";
+const BELIEF =
+  "I believe a good backend is the one nobody has to think about. It stays **fast**, stays **secure**, and **keeps working** as the product grows.";
 
-/** Key words in Glacier */
-const HI_WORDS = ["reliability", "security", "simplicity"];
+const CAN_DO =
+  "I design and build REST APIs, database schemas, authentication and the services behind them with Spring Boot. Everything is tested and ready to ship.";
 
-export default function BackendPhilosophy() {
-  const root = useRef<HTMLElement>(null);
-  const words = TEXT.split(" ");
+/** Turns **phrase** into a brighter span */
+function Marked({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/\*\*(.+?)\*\*/g).map((part, i) =>
+        i % 2 ? (
+          <span key={i} className="font-extrabold text-[#DFEAF5]">
+            {part}
+          </span>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
+}
 
-  useIso(() => {
-    const el = root.current;
+export default function Philosophy() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [seen, setSeen] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
     if (!el) return;
-    const mm = gsap.matchMedia();
-
-    mm.add("(prefers-reduced-motion: no-preference)", () => {
-      const q = gsap.utils.selector(el);
-
-      gsap.fromTo(
-        q("[data-word]"),
-        { opacity: 0.14, y: 14 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.9,
-          ease: "power3.out",
-          stagger: 0.05,
-          scrollTrigger: { trigger: q("[data-text]")[0], start: "top 80%", once: true },
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          setSeen(true);
+          io.disconnect();
         }
-      );
-    });
-
-    return () => mm.revert();
+      },
+      { threshold: 0.3 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
   }, []);
 
   return (
     <section
-      ref={root}
-      className={`${manrope.variable} ${DISPLAY} relative isolate -mt-px flex min-h-[70svh] items-center overflow-clip bg-[#0B111B] px-5 py-28 text-[#DFEAF5] antialiased selection:bg-[#FF895D] selection:text-[#0B111B] md:px-12 lg:px-16`}
+      aria-label="Philosophy"
+      className={`${manrope.className} bg-[#0B111B] antialiased selection:bg-[#FF895D] selection:text-[#0B111B]`}
     >
-      <div className="mx-auto w-full max-w-[90rem]">
-        <p
-          data-text
-          className="max-w-5xl text-[clamp(1.75rem,3.8vw,3.75rem)] font-semibold leading-[1.18] tracking-[-0.035em]"
+      <div className="mx-auto flex min-h-[65svh] w-full max-w-[90rem] items-center px-5 py-24 md:min-h-0 md:px-12 md:py-32 lg:px-16">
+        <div
+          ref={ref}
+          className={`max-w-3xl transition-[opacity,transform] duration-1000 ease-out motion-reduce:transition-none ${
+            seen ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0 motion-reduce:translate-y-0 motion-reduce:opacity-100"
+          }`}
         >
-          {words.map((w, i) => {
-            const clean = w.replace(/[^a-zA-Z]/g, "");
-            const hi = HI_WORDS.includes(clean);
-            return (
-              <span
-                key={i}
-                data-word
-                className={`mr-[0.26em] inline-block will-change-transform ${
-                  hi ? "font-extrabold text-[#A8C8EB]" : ""
-                }`}
-              >
-                {w}
-              </span>
-            );
-          })}
-        </p>
+          <p className="text-[clamp(2rem,3.2vw,2.75rem)] font-semibold leading-[1.2] tracking-[-0.04em] text-[#A8C8EB]/75">
+            <Marked text={BELIEF} />
+          </p>
+
+          <p className="mt-8 max-w-[44ch] text-base font-medium leading-[1.7] text-[#657E9B] md:mt-10">{CAN_DO}</p>
+        </div>
       </div>
     </section>
   );

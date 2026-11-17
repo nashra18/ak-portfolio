@@ -1,17 +1,21 @@
 "use client";
 
 /**
- * Navbar. Self-contained.
+ * Navbar, minimal. Self-contained.
  * Needs: next (next/font), Tailwind.
  *
  * Palette
- * Obsidian #0B111B (bg) | Atlantic #253B56 (borders) | Ice Sheet #DFEAF5 (main text)
+ * Obsidian #0B111B (bg) | Atlantic #253B56 (outline) | Ice Sheet #DFEAF5 (main text)
  * Tangerine #FF895D (accent) | Glacier #A8C8EB (active link) | Storm #657E9B (quiet text)
  *
- * Logo: "AK" in Orbitron (robotic). Links and the rest: Manrope.
- * Links do not open pages. They scroll to a section on the same page: #about, #experience, #skills, #projects, #contact.
- * Desktop (lg and up): links in the middle, GitHub on the right.
- * Phone and tablet: GitHub icon and a menu icon on the right. The menu opens a full screen list.
+ * A thin, rounded pill that floats with space around it. No divider lines.
+ * Logo: "AK" in Orbitron. Everything else: Manrope.
+ * Links scroll to a section on the same page: #about, #experience, #skills, #projects, #contact.
+ * Contact is the footer, so put id="contact" on the <footer> tag.
+ *
+ * Desktop (lg and up): logo, links in the middle, social icons on the right.
+ * Phone and tablet: logo and a menu button. The menu opens as a rounded panel
+ * with the links and, at the bottom, the social icons.
  * The active section is highlighted while scrolling.
  */
 
@@ -34,10 +38,20 @@ const orbitron = Orbitron({
 
 const DISPLAY = "font-[family-name:var(--font-nav-display)]";
 const LOGO = "font-[family-name:var(--font-nav-logo)]";
+const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FF895D]";
+
+/* Brand icons (filled, 24x24), same as the footer */
+
+const ICONS: Record<string, string> = {
+  LinkedIn:
+    "M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z",
+  GitHub:
+    "M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12",
+  LeetCode:
+    "M13.483 0a1.374 1.374 0 0 0-.961.438L7.116 6.226l-3.854 4.126a5.266 5.266 0 0 0-1.209 2.104 5.35 5.35 0 0 0-.125.513 5.527 5.527 0 0 0 .062 2.362 5.83 5.83 0 0 0 .349 1.017 5.938 5.938 0 0 0 1.271 1.818l4.277 4.193.039.038c2.248 2.165 5.852 2.133 8.063-.074l2.396-2.392c.54-.54.54-1.414.003-1.955a1.378 1.378 0 0 0-1.951-.003l-2.396 2.392a3.021 3.021 0 0 1-4.205.038l-.02-.019-4.276-4.193c-.652-.64-.972-1.469-.948-2.263a2.68 2.68 0 0 1 .066-.523 2.545 2.545 0 0 1 .619-1.164L9.13 8.114c1.058-1.134 3.204-1.27 4.43-.278l3.501 2.831c.593.48 1.461.387 1.94-.207a1.384 1.384 0 0 0-.207-1.943l-3.5-2.831c-.8-.647-1.766-1.045-2.774-1.202l2.015-2.158A1.384 1.384 0 0 0 13.483 0zm-2.866 12.815a1.38 1.38 0 0 0-1.38 1.382 1.38 1.38 0 0 0 1.38 1.382H20.79a1.38 1.38 0 0 0 1.38-1.382 1.38 1.38 0 0 0-1.38-1.382z",
+};
 
 /* Content: edit here */
-
-const GITHUB = "https://github.com/your-username"; // put your GitHub link here
 
 const LINKS = [
   { label: "About", id: "about" },
@@ -47,58 +61,86 @@ const LINKS = [
   { label: "Contact", id: "contact" },
 ];
 
-const GithubIcon = () => (
-  <svg viewBox="0 0 24 24" className="size-5" fill="currentColor" aria-hidden>
-    <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
-  </svg>
-);
+const SOCIALS = [
+  { label: "LinkedIn", href: "https://linkedin.com/in/meranaamkhann" },
+  { label: "GitHub", href: "https://github.com/meranaamkhann" },
+  { label: "LeetCode", href: "https://leetcode.com/meranaamkhann" },
+];
+
+/* Contact is the footer: use id="contact" if it exists, otherwise the <footer> tag itself */
+const findSection = (id: string) =>
+  document.getElementById(id) ?? (id === "contact" ? document.querySelector("footer") : null);
+
+function Socials({ size, tabbable = true }: { size: string; tabbable?: boolean }) {
+  return (
+    <ul className="flex items-center gap-2">
+      {SOCIALS.map((s) => (
+        <li key={s.label}>
+          <a
+            href={s.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={s.label}
+            tabIndex={tabbable ? 0 : -1}
+            className={`grid ${size} place-items-center rounded-full border border-[#253B56] text-[#DFEAF5] transition-colors duration-300 [@media(hover:hover)]:hover:border-[#FF895D] [@media(hover:hover)]:hover:text-[#FF895D] ${FOCUS}`}
+          >
+            <svg viewBox="0 0 24 24" className="size-[15px]" fill="currentColor" aria-hidden>
+              <path d={ICONS[s.label]} />
+            </svg>
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [active, setActive] = useState("");
-
-  // Background appears after a little scroll
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   // Highlight the section that is in the middle of the screen
   useEffect(() => {
-    const els = LINKS.map((l) => document.getElementById(l.id)).filter(Boolean) as HTMLElement[];
-    if (!els.length) return;
+    const map = new Map<Element, string>();
+    LINKS.forEach((l) => {
+      const el = findSection(l.id);
+      if (el) map.set(el, l.id);
+    });
     const io = new IntersectionObserver(
-      (entries) => entries.forEach((e) => e.isIntersecting && setActive(e.target.id)),
+      (entries) => entries.forEach((e) => e.isIntersecting && setActive(map.get(e.target) ?? "")),
       { rootMargin: "-40% 0px -55% 0px" }
     );
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
+    map.forEach((_, el) => io.observe(el));
+
+    // at the very bottom of the page, Contact (the footer) is the active one
+    const onScroll = () => {
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) setActive("contact");
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      io.disconnect();
+      window.removeEventListener("scroll", onScroll);
+    };
   }, []);
 
-  // Menu open: lock scroll, close with Escape
+  // Menu open: close with Escape, and when the screen grows to desktop
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onMq = () => mq.matches && setOpen(false);
     document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    mq.addEventListener("change", onMq);
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
+      mq.removeEventListener("change", onMq);
     };
   }, [open]);
 
   const go = useCallback((e: React.MouseEvent, id: string) => {
     e.preventDefault();
     setOpen(false);
-    // small delay so the scroll lock is released before scrolling
-    setTimeout(() => {
-      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-      history.replaceState(null, "", `#${id}`);
-    }, 50);
+    findSection(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    history.replaceState(null, "", `#${id}`);
   }, []);
 
   const goTop = (e: React.MouseEvent) => {
@@ -110,128 +152,102 @@ export default function Navbar() {
 
   return (
     <>
-      <header
-        className={`${manrope.variable} ${orbitron.variable} ${DISPLAY} fixed inset-x-0 top-0 z-[60] antialiased transition-[background-color,border-color,backdrop-filter] duration-300 selection:bg-[#FF895D] selection:text-[#0B111B] ${
-          scrolled && !open
-            ? "border-b border-[#253B56] bg-[#0B111B]/80 backdrop-blur-md"
-            : "border-b border-transparent bg-transparent"
+      {/* blurs the whole page behind the menu, tap to close (phone and tablet) */}
+      <div
+        onClick={() => setOpen(false)}
+        aria-hidden
+        className={`fixed inset-0 z-[55] [-webkit-tap-highlight-color:transparent] bg-[#0B111B]/50 backdrop-blur-xl transition-opacity duration-300 lg:hidden ${
+          open ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
+      />
+
+      <header
+        className={`${manrope.variable} ${orbitron.variable} ${DISPLAY} [-webkit-tap-highlight-color:transparent] pointer-events-none fixed inset-x-0 top-3 z-[60] flex justify-center antialiased selection:bg-[#FF895D] selection:text-[#0B111B] md:top-5`}
       >
-        <nav
-          aria-label="Main"
-          className="mx-auto flex h-16 w-full max-w-[90rem] items-center justify-between px-5 md:h-20 md:px-12 lg:px-16"
-        >
-          {/* Logo */}
-          <a
-            href="#"
-            onClick={goTop}
-            aria-label="Home"
-            className="group flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FF895D]"
-          >
-            <span className={`${LOGO} text-[1.6rem] font-extrabold leading-none tracking-[0.12em] text-[#DFEAF5] md:text-3xl`}>
-              AK
-            </span>
-            <span className="mt-2 size-1.5 bg-[#FF895D] md:mt-3 md:size-2" aria-hidden />
-          </a>
-
-          {/* Desktop links */}
-          <ul className="hidden items-center gap-9 lg:flex xl:gap-11">
-            {LINKS.map((l) => (
-              <li key={l.id}>
-                <a
-                  href={`#${l.id}`}
-                  onClick={(e) => go(e, l.id)}
-                  aria-current={active === l.id ? "true" : undefined}
-                  className={`text-sm font-semibold tracking-[-0.01em] transition-colors duration-300 hover:text-[#DFEAF5] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FF895D] ${
-                    active === l.id ? "text-[#A8C8EB]" : "text-[#657E9B]"
-                  }`}
-                >
-                  {l.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-
-          {/* Right side */}
-          <div className="flex items-center gap-2">
-            <a
-              href={GITHUB}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="GitHub"
-              className="grid size-10 place-items-center rounded-full border border-[#253B56] text-[#DFEAF5] transition-colors duration-300 hover:border-[#657E9B] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FF895D]"
-            >
-              <GithubIcon />
+        <nav aria-label="Main" className="pointer-events-auto relative w-[90vw] max-w-5xl">
+          {/* the thin pill */}
+          <div className="flex h-12 items-center justify-between rounded-full border border-[#253B56] bg-[#0B111B]/80 pl-5 pr-2 backdrop-blur-md md:pl-6 lg:pr-3">
+            {/* Logo */}
+            <a href="#" onClick={goTop} aria-label="Home" className={`flex items-center gap-1.5 ${FOCUS}`}>
+              <span className={`${LOGO} text-xl font-extrabold leading-none tracking-[0.12em] text-[#DFEAF5]`}>AK</span>
+              <span className="mt-1.5 size-1.5 bg-[#FF895D]" aria-hidden />
             </a>
 
-            {/* Menu icon: phone and tablet only */}
+            {/* Desktop links */}
+            <ul className="hidden items-center gap-8 lg:flex xl:gap-10">
+              {LINKS.map((l) => (
+                <li key={l.id}>
+                  <a
+                    href={`#${l.id}`}
+                    onClick={(e) => go(e, l.id)}
+                    aria-current={active === l.id ? "true" : undefined}
+                    className={`text-sm font-semibold tracking-[-0.01em] transition-colors duration-300 [@media(hover:hover)]:hover:text-[#DFEAF5] ${FOCUS} ${
+                      active === l.id ? "text-[#A8C8EB]" : "text-[#657E9B]"
+                    }`}
+                  >
+                    {l.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+
+            {/* Desktop socials */}
+            <div className="hidden lg:block">
+              <Socials size="size-8" />
+            </div>
+
+            {/* Menu button: phone and tablet only */}
             <button
               onClick={() => setOpen((v) => !v)}
               aria-label={open ? "Close menu" : "Open menu"}
               aria-expanded={open}
               aria-controls="mobile-menu"
-              className="grid size-10 cursor-pointer place-items-center rounded-full border border-[#253B56] text-[#DFEAF5] transition-colors duration-300 hover:border-[#657E9B] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FF895D] lg:hidden"
+              className={`grid size-9 cursor-pointer place-items-center rounded-full text-[#DFEAF5] transition-colors duration-300 [@media(hover:hover)]:hover:bg-[#253B56]/60 lg:hidden ${FOCUS}`}
             >
-              <span className="relative block h-3 w-5" aria-hidden>
+              <span className="relative block h-2 w-4" aria-hidden>
                 <span
-                  className={`absolute left-0 block h-[2px] w-5 rounded-full bg-current transition-all duration-300 ${
-                    open ? "top-1/2 -translate-y-1/2 rotate-45" : "top-0"
+                  className={`absolute left-0 block h-px w-4 bg-current transition-all duration-300 ${
+                    open ? "top-1/2 rotate-45" : "top-0"
                   }`}
                 />
                 <span
-                  className={`absolute left-0 block h-[2px] w-5 rounded-full bg-current transition-all duration-300 ${
-                    open ? "top-1/2 -translate-y-1/2 -rotate-45" : "bottom-0"
+                  className={`absolute left-0 block h-px w-4 bg-current transition-all duration-300 ${
+                    open ? "top-1/2 -rotate-45" : "bottom-0"
                   }`}
                 />
               </span>
             </button>
           </div>
-        </nav>
-      </header>
 
-      {/* Mobile menu: full screen. A sibling of the header, because backdrop-blur on the header would trap a fixed child. */}
-      <div
-        id="mobile-menu"
-        className={`${manrope.variable} ${DISPLAY} fixed inset-0 z-[55] bg-[#0B111B] antialiased transition-opacity duration-300 lg:hidden ${
-          open ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
-        aria-hidden={!open}
-      >
-        <div className="mx-auto flex h-full w-full max-w-[90rem] flex-col justify-between px-5 pb-10 pt-28 md:px-12">
-          <ul className="flex flex-col divide-y divide-dashed divide-[#253B56] border-y border-dashed border-[#253B56]">
-            {LINKS.map((l, i) => (
-              <li key={l.id}>
-                <a
-                  href={`#${l.id}`}
-                  onClick={(e) => go(e, l.id)}
-                  tabIndex={open ? 0 : -1}
-                  className="flex items-baseline gap-4 py-5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FF895D]"
-                >
-                  <span className="text-xs font-semibold tabular-nums text-[#A8C8EB]">{String(i + 1).padStart(2, "0")}</span>
-                  <span
-                    className={`text-[1.75rem] font-extrabold leading-[1] tracking-[-0.045em] transition-colors duration-300 ${
-                      active === l.id ? "text-[#A8C8EB]" : "text-[#DFEAF5]"
-                    }`}
+          {/* Menu panel: compact rounded rows, social icons at the bottom */}
+          <div
+            id="mobile-menu"
+            aria-hidden={!open}
+            className={`absolute inset-x-0 top-full mt-2 rounded-[1.75rem] border border-[#253B56] bg-[#0B111B]/95 p-2 backdrop-blur-md transition-[opacity,transform,visibility] duration-300 lg:hidden ${
+              open ? "visible translate-y-0 opacity-100" : "invisible -translate-y-2 opacity-0"
+            }`}
+          >
+            <ul className="flex flex-col">
+              {LINKS.map((l) => (
+                <li key={l.id}>
+                  <a
+                    href={`#${l.id}`}
+                    onClick={(e) => go(e, l.id)}
+                    tabIndex={open ? 0 : -1}
+                    className={`block rounded-full px-5 py-3 text-base font-semibold tracking-[-0.01em] text-[#A8C8EB]/80 transition-colors duration-300 [@media(hover:hover)]:hover:bg-[#253B56]/40 ${FOCUS}`}
                   >
                     {l.label}
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ul>
+                  </a>
+                </li>
+              ))}
+            </ul>
 
-          <a
-            href={GITHUB}
-            target="_blank"
-            rel="noopener noreferrer"
-            tabIndex={open ? 0 : -1}
-            className="flex w-fit items-center gap-2 text-sm font-semibold text-[#657E9B] transition-colors hover:text-[#DFEAF5]"
-          >
-            <GithubIcon />
-            GitHub
-          </a>
-        </div>
-      </div>
+            <div className="px-3 pb-3 pt-5">
+              <Socials size="size-10" tabbable={open} />
+            </div>
+          </div>
+        </nav>
+      </header>
     </>
   );
 }

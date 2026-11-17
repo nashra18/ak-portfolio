@@ -32,7 +32,8 @@ const useIso = typeof window !== "undefined" ? useLayoutEffect : useEffect;
        before GSAP moves them down.
     2. The idle drift now starts the virtual pointer at its target instead of (0, 0),
        so the mesh no longer gets yanked after about 1.5s.
-  - Grid animation logic is unchanged.
+  - Grid animation logic is unchanged. Only values were lowered (opacity, force, dot size)
+    so the background draws less attention.
 */
 
 const LINE = "#A8C8EB";
@@ -63,8 +64,8 @@ function GridCanvas({ g }: { g: React.MutableRefObject<G> }) {
     let h = 0;
     let nc = 0;
     let nr = 0;
-    let minorA = 0.13;
-    let majorA = 0.34;
+    let minorA = 0.07;
+    let majorA = 0.18;
     let xs: number[] = [];
     let ys: number[] = [];
     let ox = new Float32Array(0);
@@ -87,8 +88,8 @@ function GridCanvas({ g }: { g: React.MutableRefObject<G> }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const phone = w < 768;
       const cell = phone ? 46 : 40; // bigger cells on phones, so it never feels crowded
-      minorA = phone ? 0.08 : 0.12;
-      majorA = phone ? 0.24 : 0.3;
+      minorA = phone ? 0.05 : 0.07;
+      majorA = phone ? 0.14 : 0.18;
       nc = Math.max(2, Math.round(w / cell));
       nr = Math.max(2, Math.round(h / cell));
       xs = Array.from({ length: nc + 1 }, (_, i) => (i * w) / nc);
@@ -155,8 +156,8 @@ function GridCanvas({ g }: { g: React.MutableRefObject<G> }) {
     /* physics */
     const integrate = (time: number, dt: number, idle: boolean) => {
       const R = w < 768 ? 150 : 200;
-      const LIMIT = 80;
-      const gain = idle ? 0.55 : 1;
+      const LIMIT = 50;
+      const gain = idle ? 0.35 : 0.7;
       const stride = nr + 1;
 
       for (let i = 0; i <= nc; i++) {
@@ -171,13 +172,13 @@ function GridCanvas({ g }: { g: React.MutableRefObject<G> }) {
             const d = Math.hypot(dx, dy);
             if (d < R) {
               const f = (1 - d / R) ** 2 * gain;
-              vx[k] += (cvx * 0.16 + (dx / (d || 1)) * 0.9) * f * dt;
-              vy[k] += (cvy * 0.16 + (dy / (d || 1)) * 0.9) * f * dt;
+              vx[k] += (cvx * 0.1 + (dx / (d || 1)) * 0.5) * f * dt;
+              vy[k] += (cvy * 0.1 + (dy / (d || 1)) * 0.5) * f * dt;
             }
           }
 
-          vx[k] += Math.sin(time * 0.7 + j * 0.35 + i * 0.12) * 0.012 * dt;
-          vy[k] += Math.cos(time * 0.6 + i * 0.3 + j * 0.1) * 0.012 * dt;
+          vx[k] += Math.sin(time * 0.7 + j * 0.35 + i * 0.12) * 0.008 * dt;
+          vy[k] += Math.cos(time * 0.6 + i * 0.3 + j * 0.1) * 0.008 * dt;
 
           let ax = 0;
           let ay = 0;
@@ -206,7 +207,7 @@ function GridCanvas({ g }: { g: React.MutableRefObject<G> }) {
             const dx = xs[i] + ox[k] - wv.x;
             const dy = ys[j] + oy[k] - wv.y;
             const d = Math.hypot(dx, dy) || 1;
-            const e = Math.exp(-(((d - front) / 38) ** 2)) * fade * 2.4 * dt;
+            const e = Math.exp(-(((d - front) / 38) ** 2)) * fade * 1.4 * dt;
             vx[k] += (dx / d) * e;
             vy[k] += (dy / d) * e;
           }
@@ -295,8 +296,8 @@ function GridCanvas({ g }: { g: React.MutableRefObject<G> }) {
         const p = easeOut(raw);
         const settle = clamp01((T - delay - dur) / 1.2);
         const base = idx % 4 === 0 ? majorA : minorA;
-        ctx.globalAlpha = base + 0.4 * (1 - settle);
-        ctx.lineWidth = 1 + 0.25 * (1 - settle);
+        ctx.globalAlpha = base + 0.22 * (1 - settle);
+        ctx.lineWidth = 1 + 0.1 * (1 - settle);
         ctx.beginPath();
         trace(vertical, idx, 0.5 - p / 2, 0.5 + p / 2);
         ctx.stroke();
@@ -309,8 +310,8 @@ function GridCanvas({ g }: { g: React.MutableRefObject<G> }) {
       for (let j = 0; j <= nr; j++) line(false, j, hDelay[j], hDur[j]);
 
       ctx.fillStyle = ACCENT;
-      ctx.globalAlpha = 0.95;
-      heads.forEach(([x, y]) => ctx.fillRect(x - 2.5, y - 2.5, 5, 5));
+      ctx.globalAlpha = 0.6;
+      heads.forEach(([x, y]) => ctx.fillRect(x - 2, y - 2, 4, 4));
 
       // markers light up only where the cloth is moving
       const live = clamp01((T - 1.5) / 1.5);
@@ -321,8 +322,8 @@ function GridCanvas({ g }: { g: React.MutableRefObject<G> }) {
             const k = i * stride + j;
             const disp = Math.hypot(ox[k], oy[k]);
             if (disp < 2) continue;
-            const s = Math.min(6, 1 + disp * 0.1);
-            ctx.globalAlpha = Math.min(1, disp / 16) * live;
+            const s = Math.min(4, 1 + disp * 0.06);
+            ctx.globalAlpha = Math.min(1, disp / 16) * 0.5 * live;
             ctx.fillRect(xs[i] + ox[k] - s / 2, ys[j] + oy[k] - s / 2, s, s);
           }
         }
@@ -354,11 +355,23 @@ function GridCanvas({ g }: { g: React.MutableRefObject<G> }) {
 
 function Btn({ href, children, ghost, download }: { href: string; children: React.ReactNode; ghost?: boolean; download?: boolean }) {
   const icon = `size-4 shrink-0 transition-transform duration-500 ${SPRING}`;
+
+  const onClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!href.startsWith("#")) return;
+    const target = document.getElementById(href.slice(1));
+    if (!target) return;
+    e.preventDefault();
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    history.pushState(null, "", href);
+  };
+
   return (
     <a
       href={href}
       download={download}
-      className={`group inline-flex h-12 w-fit items-center justify-center gap-2 whitespace-nowrap rounded-full px-6 text-sm font-semibold leading-none transition-transform duration-500 ${SPRING} hover:-translate-y-0.5 active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FF895D] md:h-14 md:px-8 md:text-base ${
+      onClick={onClick}
+      className={`group inline-flex w-fit items-center justify-center gap-2 whitespace-nowrap rounded-full px-6 py-3 text-sm font-semibold leading-none transition-transform duration-500 ${SPRING} hover:-translate-y-0.5 active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FF895D] md:px-8 md:py-4 md:text-base ${
         ghost
           ? "border border-[#253B56] bg-[#0B111B]/60 text-[#DFEAF5] hover:border-[#657E9B]"
           : "bg-[#FF895D] text-[#0B111B]"
@@ -380,7 +393,7 @@ function Btn({ href, children, ghost, download }: { href: string; children: Reac
 
 /* ---------- Hero ---------- */
 
-export default function Hero3() {
+export default function Hero() {
   const root = useRef<HTMLElement>(null);
   const g = useRef<G>({ T: 0 });
 

@@ -41,11 +41,14 @@ const DATA = {
   description:
     "I'm Asad Khan, a final year B.Tech IT student focused on backend engineering. I design secure APIs, scalable systems and reliable applications with Java and Spring Boot.",
   buttonLabel: "Know more",
-  full: `I'm Asad Khan, a final year B.Tech Information Technology student with a strong interest in backend development and AI.
 
-I enjoy building software that solves real problems. My focus is backend engineering: designing secure APIs, scalable systems, and reliable applications with Java and Spring Boot.
+  /* Modal: three paragraphs. Who he is, what he does, what he believes.
+     A blank line between them makes a new paragraph. */
+  full: `I'm Asad Khan, a final year B.Tech Information Technology student, graduating in 2027. I learn by building, so most of what I know comes from shipping real projects, solving 800+ problems on LeetCode and sharing my journey publicly.
 
-I'm currently building products, sharing my journey publicly, and looking for opportunities to contribute to startups and engineering teams.`,
+Day to day I work on backends. I build APIs protected with JWT and role based access, design systems that can grow, and write applications that stay reliable under real use, mostly with Java and Spring Boot. Alongside that, I build AI products, like a health chatbot on Google Gemini and ML models for air quality and exoplanet detection.
+
+I believe the best part of a product is the part nobody notices, because it never breaks. I like keeping systems simple, secure and honest, and I want to work with startups and teams who care about the same things.`,
 
   stats: [
     { label: "GitHub projects", value: "16", suffix: "+" },
@@ -54,9 +57,9 @@ I'm currently building products, sharing my journey publicly, and looking for op
   ],
 };
 
-/* Button: compact on phones, larger on desktop. No lift, only a slight brightness change. */
+/* Button: height comes from py, not a fixed h. No lift, only a slight brightness change. */
 
-const BTN_SOLID = `group inline-flex h-10 w-fit cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[#FF895D] px-4 text-[13px] font-semibold leading-none text-[#0B111B] transition-[filter] duration-300 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FF895D] md:h-14 md:gap-2 md:px-8 md:text-base`;
+const BTN_SOLID = `group inline-flex w-fit cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[#FF895D] px-4 py-3 text-[13px] font-semibold leading-none text-[#0B111B] transition-[filter] duration-300 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FF895D] md:gap-2 md:px-8 md:py-4 md:text-base`;
 
 const ArrowRight = () => (
   <svg viewBox="0 0 24 24" className="size-3.5 shrink-0 md:size-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

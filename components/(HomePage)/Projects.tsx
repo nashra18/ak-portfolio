@@ -1,22 +1,31 @@
 "use client";
 
 /**
- * Projects section, dark Skills theme with soft glass cards. No images, no gsap.
+ * Projects section. Dark, flat, editorial. No images, no gsap.
  * Needs: next (next/font), Tailwind.
  *
  * Palette
- * Obsidian #0B111B (bg) | Ice Sheet #DFEAF5 (titles) | Glacier #A8C8EB (numbers, links)
- * Storm #657E9B (labels) | Tangerine #FF895D (selection, link hover)
+ * Obsidian #0B111B (bg) | Card #101A28 (card) | Edge #1C2B40 (card border) | Atlantic #253B56 (stack block)
+ * Ice Sheet #DFEAF5 (titles, live link) | Glacier #A8C8EB (stack text) | Storm #657E9B (numbers, labels)
+ * Tangerine #FF895D (selection, link hover)
  *
- * Cards: low opacity white fill (white/6), slightly rounded corners, no shadow.
+ * Typography carries the message. Two voices: heavy Manrope for names, JetBrains Mono for the technical layer
+ * (number, one-line description, labels, stack). Contrast comes from size, weight and tone, not decoration.
+ *
+ * Design rules, kept deliberately plain:
+ *   - soft whitish flat cards, one thin border, no gradients, no glow, no ghost numbers, no lift on hover
+ *   - on hover the card gets a slightly lighter fill, a brighter border, and its number turns tangerine. The number sits right next to the title.
+ *   - sentence case labels, no uppercase tracking tags
+ *   - tangerine appears only on the card number (hover), link hover and text selection
+ *   - links are text links with an arrow, not filled buttons
+ *   - the stack sits in small solid blocks
+ *
  * Phone: 1 column. Tablet: 2 columns. Laptop and up: 3 columns.
- * Each card: number and title on the left, live (globe) and code (GitHub) icons on the right,
- * then what it is, the problem it solved, and the stack at the bottom.
  *
  * Motion: one soft fade-up per card when it enters the screen. Nothing else moves.
  */
 
-import { Manrope } from "next/font/google";
+import { JetBrains_Mono, Manrope } from "next/font/google";
 import { useEffect, useLayoutEffect, useRef } from "react";
 
 const manrope = Manrope({
@@ -26,7 +35,17 @@ const manrope = Manrope({
   variable: "--font-projects-display",
 });
 
+/* Technical layer: numbers, labels, one-line descriptions and the stack use a mono face.
+   Big heavy Manrope titles against small mono details is the contrast that says "backend". */
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["500", "600"],
+  display: "swap",
+  variable: "--font-projects-mono",
+});
+
 const DISPLAY = "font-[family-name:var(--font-projects-display)]";
+const MONO = "font-[family-name:var(--font-projects-mono)]";
 const HIDDEN = "opacity-0 motion-reduce:opacity-100";
 const useIso = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
@@ -102,22 +121,13 @@ const DATA: { title: string; intro: string; projects: Project[] } = {
   ],
 };
 
-const ICON =
-  "grid size-9 shrink-0 place-items-center rounded-full bg-white/[0.07] text-[#A8C8EB] transition-colors duration-300 hover:bg-[#FF895D] hover:text-[#0B111B] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FF895D]";
+const LINK =
+  "inline-flex items-center gap-1.5 text-sm font-semibold leading-none underline decoration-transparent decoration-2 underline-offset-[6px] transition-colors duration-300 hover:text-[#FF895D] hover:decoration-[#FF895D] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FF895D]";
 
-/** Globe icon for the live demo */
-const LiveIcon = () => (
-  <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <circle cx="12" cy="12" r="10" />
-    <path d="M2 12h20" />
-    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-  </svg>
-);
-
-/** GitHub icon for the code */
-const CodeIcon = () => (
-  <svg viewBox="0 0 24 24" className="size-[17px]" fill="currentColor" aria-hidden>
-    <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.37-3.87-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
+/** Small arrow for external links */
+const Arrow = () => (
+  <svg viewBox="0 0 24 24" className="size-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M7 17L17 7M8 7h9v9" />
   </svg>
 );
 
@@ -161,7 +171,7 @@ export function Projects() {
       ref={root}
       id="projects"
       aria-label="Projects"
-      className={`${manrope.variable} ${DISPLAY} relative isolate overflow-clip bg-[#0B111B] text-[#DFEAF5] antialiased selection:bg-[#FF895D] selection:text-[#0B111B]`}
+      className={`${manrope.variable} ${mono.variable} ${DISPLAY} relative isolate overflow-clip bg-[#0B111B] text-[#DFEAF5] antialiased selection:bg-[#FF895D] selection:text-[#0B111B]`}
     >
       <div className="mx-auto w-full max-w-[90rem] px-5 pb-20 pt-20 md:px-12 md:pb-28 md:pt-28 lg:px-16">
         {/* Heading: title left, intro right on desktop */}
@@ -180,37 +190,50 @@ export function Projects() {
         {/* Cards: 1 column phone, 2 tablet, 3 laptop */}
         <ol className="mt-12 grid grid-cols-1 gap-4 md:mt-20 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
           {DATA.projects.map((p, i) => (
-            <li
-              key={p.title}
-              data-fade
-              className={`flex h-full flex-col rounded-xl bg-white/[0.06] p-5 transition-colors duration-300 hover:bg-white/[0.09] md:p-6 ${HIDDEN}`}
-            >
-              {/* title left, live + code icons right */}
-              <div className="flex items-start justify-between gap-4">
+            <li key={p.title} data-fade className={`h-full ${HIDDEN}`}>
+              <article className="group flex h-full flex-col rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-6 transition-colors duration-300 hover:border-white/20 hover:bg-white/[0.09] md:p-8">
                 <div className="flex items-baseline gap-3">
-                  <span className="text-sm font-extrabold tabular-nums tracking-[-0.02em] text-[#A8C8EB]">
+                  <span className={`${MONO} text-sm font-semibold tabular-nums text-[#A8C8EB] transition-colors duration-300 group-hover:text-[#FF895D]`}>
                     {String(i + 1).padStart(2, "0")}
                   </span>
-                  <h3 className="text-[1.5rem] font-extrabold leading-[1.05] tracking-[-0.045em] text-[#DFEAF5] md:text-[1.6rem]">
+                  <h3 className="text-[1.9rem] font-extrabold leading-[1] tracking-[-0.055em] text-[#DFEAF5] md:text-[2.4rem]">
                     {p.title}
                   </h3>
                 </div>
+                <p className={`${MONO} mt-3 pl-[1.8rem] text-[12.5px] font-medium leading-[1.5] text-[#A8C8EB]/70`}>{p.kind}</p>
 
-                <div className="flex gap-2">
-                  <a href={p.live} target="_blank" rel="noopener noreferrer" aria-label={`Open live demo of ${p.title}`} title="Live demo" className={ICON}>
-                    <LiveIcon />
-                  </a>
-                  <a href={p.code} target="_blank" rel="noopener noreferrer" aria-label={`View code of ${p.title}`} title="View code" className={ICON}>
-                    <CodeIcon />
-                  </a>
+                <div className="mt-7 flex flex-col gap-2">
+                  <span className={`${MONO} text-[11px] font-semibold text-[#657E9B]`}>Problem</span>
+                  <p className="max-w-[48ch] text-[15px] font-medium leading-[1.7] text-[#DFEAF5]/80">{p.problem}</p>
                 </div>
-              </div>
 
-              <p className="mt-1 pl-[2.1rem] text-[13px] font-medium leading-[1.5] text-[#657E9B]">{p.kind}</p>
+                <div className="mt-auto flex flex-col gap-6 pt-8">
+                  <div className="flex flex-col gap-2.5">
+                    <span className={`${MONO} text-[11px] font-semibold text-[#657E9B]`}>Stack</span>
+                    <ul className="flex flex-wrap gap-2">
+                      {p.stack.map((s) => (
+                        <li
+                          key={s}
+                          className={`${MONO} rounded-md border border-white/10 bg-white/[0.07] px-2.5 py-1.5 text-xs font-medium leading-none text-[#A8C8EB]`}
+                        >
+                          {s}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
 
-              <p className="mt-6 text-[15px] font-medium leading-[1.7] tracking-[-0.01em] text-[#DFEAF5]/80">{p.problem}</p>
-
-              <p className="mt-auto pt-6 text-[13px] font-medium leading-[1.6] text-[#A8C8EB]/70">{p.stack.join(", ")}</p>
+                  <div className="flex items-center gap-6 border-t border-white/10 pt-5">
+                    <a href={p.live} target="_blank" rel="noopener noreferrer" aria-label={`Open live demo of ${p.title}`} className={`${LINK} text-[#DFEAF5]`}>
+                      Live demo
+                      <Arrow />
+                    </a>
+                    <a href={p.code} target="_blank" rel="noopener noreferrer" aria-label={`View code of ${p.title}`} className={`${LINK} text-[#A8C8EB]/80`}>
+                      Code
+                      <Arrow />
+                    </a>
+                  </div>
+                </div>
+              </article>
             </li>
           ))}
         </ol>
