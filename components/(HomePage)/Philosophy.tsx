@@ -1,26 +1,10 @@
 "use client";
 
-/**
- * Philosophy. Two short parts: what I believe, and what I can do for you.
- * Needs: next (next/font), Tailwind. No animation library.
- *
- * Palette
- * Obsidian #0B111B (bg) | Ice Sheet #DFEAF5 (key words) | Glacier #A8C8EB (body)
- * Storm #657E9B (supporting line) | Tangerine #FF895D (text selection only)
- *
- * Readable but calm: a medium headline, one smaller supporting line.
- * Wrap a key phrase in **double stars** to make it brighter.
- * Motion: one soft fade when it comes into view. Plays once, skipped for reduced motion.
- */
-
-import { Manrope } from "next/font/google";
 import { useEffect, useRef, useState } from "react";
 
-const manrope = Manrope({
-  subsets: ["latin"],
-  weight: ["500", "600", "800"],
-  display: "swap",
-});
+/* Theme (globals.css) is the single source for colours, sizes and weights.
+   Wrap a key phrase in **double stars** to make it brighter.
+   Motion: one soft fade when it comes into view. Plays once, skipped for reduced motion. */
 
 /* Content: edit here */
 
@@ -36,7 +20,7 @@ function Marked({ text }: { text: string }) {
     <>
       {text.split(/\*\*(.+?)\*\*/g).map((part, i) =>
         i % 2 ? (
-          <span key={i} className="font-extrabold text-[#DFEAF5]">
+          <span key={i} className="font-extrabold text-heading">
             {part}
           </span>
         ) : (
@@ -70,20 +54,20 @@ export default function Philosophy() {
   return (
     <section
       aria-label="Philosophy"
-      className={`${manrope.className} bg-[#0B111B] antialiased selection:bg-[#FF895D] selection:text-[#0B111B]`}
+      className="bg-section-bg font-display antialiased selection:bg-accent selection:text-on-accent"
     >
-      <div className="mx-auto flex min-h-[65svh] w-full max-w-[90rem] items-center px-5 py-24 md:min-h-0 md:px-12 md:py-32 lg:px-16">
+      <div className="mx-auto flex min-h-[65svh] w-full max-w-page items-center px-gutter py-24 md:min-h-0 md:px-gutter-md md:py-32 lg:px-gutter-lg">
         <div
           ref={ref}
           className={`max-w-3xl transition-[opacity,transform] duration-1000 ease-out motion-reduce:transition-none ${
             seen ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0 motion-reduce:translate-y-0 motion-reduce:opacity-100"
           }`}
         >
-          <p className="text-[clamp(2rem,3.2vw,2.75rem)] font-semibold leading-[1.2] tracking-[-0.04em] text-[#A8C8EB]/75">
+          <p className="text-statement text-subheading-soft">
             <Marked text={BELIEF} />
           </p>
 
-          <p className="mt-8 max-w-[44ch] text-base font-medium leading-[1.7] text-[#657E9B] md:mt-10">{CAN_DO}</p>
+          <p className="mt-8 max-w-[44ch] text-body md:text-body-md text-muted md:mt-10">{CAN_DO}</p>
         </div>
       </div>
     </section>

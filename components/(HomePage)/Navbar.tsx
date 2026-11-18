@@ -1,44 +1,11 @@
 "use client";
 
-/**
- * Navbar, minimal. Self-contained.
- * Needs: next (next/font), Tailwind.
- *
- * Palette
- * Obsidian #0B111B (bg) | Atlantic #253B56 (outline) | Ice Sheet #DFEAF5 (main text)
- * Tangerine #FF895D (accent) | Glacier #A8C8EB (active link) | Storm #657E9B (quiet text)
- *
- * A thin, rounded pill that floats with space around it. No divider lines.
- * Logo: "AK" in Orbitron. Everything else: Manrope.
- * Links scroll to a section on the same page: #about, #experience, #skills, #projects, #contact.
- * Contact is the footer, so put id="contact" on the <footer> tag.
- *
- * Desktop (lg and up): logo, links in the middle, social icons on the right.
- * Phone and tablet: logo and a menu button. The menu opens as a rounded panel
- * with the links and, at the bottom, the social icons.
- * The active section is highlighted while scrolling.
- */
-
-import { Manrope, Orbitron } from "next/font/google";
 import { useCallback, useEffect, useState } from "react";
 
-const manrope = Manrope({
-  subsets: ["latin"],
-  weight: ["500", "600", "800"],
-  display: "swap",
-  variable: "--font-nav-display",
-});
+/* Theme (globals.css) is the single source for colours and fonts.
+   Fonts: font-display (Manrope) and font-logo (Orbitron), both loaded in layout.tsx. */
 
-const orbitron = Orbitron({
-  subsets: ["latin"],
-  weight: ["800"],
-  display: "swap",
-  variable: "--font-nav-logo",
-});
-
-const DISPLAY = "font-[family-name:var(--font-nav-display)]";
-const LOGO = "font-[family-name:var(--font-nav-logo)]";
-const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FF895D]";
+const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent";
 
 /* Brand icons (filled, 24x24), same as the footer */
 
@@ -82,7 +49,7 @@ function Socials({ size, tabbable = true }: { size: string; tabbable?: boolean }
             rel="noopener noreferrer"
             aria-label={s.label}
             tabIndex={tabbable ? 0 : -1}
-            className={`grid ${size} place-items-center rounded-full border border-[#253B56] text-[#DFEAF5] transition-colors duration-300 [@media(hover:hover)]:hover:border-[#FF895D] [@media(hover:hover)]:hover:text-[#FF895D] ${FOCUS}`}
+            className={`grid ${size} place-items-center rounded-full border border-section-border text-heading transition-colors duration-300 [@media(hover:hover)]:hover:border-accent [@media(hover:hover)]:hover:text-accent ${FOCUS}`}
           >
             <svg viewBox="0 0 24 24" className="size-[15px]" fill="currentColor" aria-hidden>
               <path d={ICONS[s.label]} />
@@ -156,21 +123,19 @@ export default function Navbar() {
       <div
         onClick={() => setOpen(false)}
         aria-hidden
-        className={`fixed inset-0 z-[55] [-webkit-tap-highlight-color:transparent] bg-[#0B111B]/50 backdrop-blur-xl transition-opacity duration-300 lg:hidden ${
+        className={`fixed inset-0 z-[55] [-webkit-tap-highlight-color:transparent] bg-section-bg/50 backdrop-blur-xl transition-opacity duration-300 lg:hidden ${
           open ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       />
 
-      <header
-        className={`${manrope.variable} ${orbitron.variable} ${DISPLAY} [-webkit-tap-highlight-color:transparent] pointer-events-none fixed inset-x-0 top-3 z-[60] flex justify-center antialiased selection:bg-[#FF895D] selection:text-[#0B111B] md:top-5`}
-      >
+      <header className="pointer-events-none fixed inset-x-0 top-3 z-[60] flex justify-center font-display antialiased [-webkit-tap-highlight-color:transparent] selection:bg-accent selection:text-on-accent md:top-5">
         <nav aria-label="Main" className="pointer-events-auto relative w-[90vw] max-w-5xl">
           {/* the thin pill */}
-          <div className="flex h-12 items-center justify-between rounded-full border border-[#253B56] bg-[#0B111B]/80 pl-5 pr-2 backdrop-blur-md md:pl-6 lg:pr-3">
+          <div className="flex h-12 items-center justify-between rounded-full border border-section-border bg-section-bg/80 pl-5 pr-2 backdrop-blur-md md:pl-6 lg:pr-3">
             {/* Logo */}
             <a href="#" onClick={goTop} aria-label="Home" className={`flex items-center gap-1.5 ${FOCUS}`}>
-              <span className={`${LOGO} text-xl font-extrabold leading-none tracking-[0.12em] text-[#DFEAF5]`}>AK</span>
-              <span className="mt-1.5 size-1.5 bg-[#FF895D]" aria-hidden />
+              <span className="font-logo text-xl font-extrabold leading-none tracking-[0.12em] text-heading">AK</span>
+              <span className="mt-1.5 size-1.5 bg-accent" aria-hidden />
             </a>
 
             {/* Desktop links */}
@@ -181,8 +146,8 @@ export default function Navbar() {
                     href={`#${l.id}`}
                     onClick={(e) => go(e, l.id)}
                     aria-current={active === l.id ? "true" : undefined}
-                    className={`text-sm font-semibold tracking-[-0.01em] transition-colors duration-300 [@media(hover:hover)]:hover:text-[#DFEAF5] ${FOCUS} ${
-                      active === l.id ? "text-[#A8C8EB]" : "text-[#657E9B]"
+                    className={`text-sm font-semibold tracking-[-0.01em] transition-colors duration-300 [@media(hover:hover)]:hover:text-heading ${FOCUS} ${
+                      active === l.id ? "text-subheading" : "text-muted"
                     }`}
                   >
                     {l.label}
@@ -202,7 +167,7 @@ export default function Navbar() {
               aria-label={open ? "Close menu" : "Open menu"}
               aria-expanded={open}
               aria-controls="mobile-menu"
-              className={`grid size-9 cursor-pointer place-items-center rounded-full text-[#DFEAF5] transition-colors duration-300 [@media(hover:hover)]:hover:bg-[#253B56]/60 lg:hidden ${FOCUS}`}
+              className={`grid size-9 cursor-pointer place-items-center rounded-full text-heading transition-colors duration-300 [@media(hover:hover)]:hover:bg-section-border/60 lg:hidden ${FOCUS}`}
             >
               <span className="relative block h-2 w-4" aria-hidden>
                 <span
@@ -219,11 +184,11 @@ export default function Navbar() {
             </button>
           </div>
 
-          {/* Menu panel: compact rounded rows, social icons at the bottom */}
+          {/* Menu panel */}
           <div
             id="mobile-menu"
             aria-hidden={!open}
-            className={`absolute inset-x-0 top-full mt-2 rounded-[1.75rem] border border-[#253B56] bg-[#0B111B]/95 p-2 backdrop-blur-md transition-[opacity,transform,visibility] duration-300 lg:hidden ${
+            className={`absolute inset-x-0 top-full mt-2 rounded-[1.75rem] border border-section-border bg-section-bg/95 p-2 backdrop-blur-md transition-[opacity,transform,visibility] duration-300 lg:hidden ${
               open ? "visible translate-y-0 opacity-100" : "invisible -translate-y-2 opacity-0"
             }`}
           >
@@ -234,7 +199,7 @@ export default function Navbar() {
                     href={`#${l.id}`}
                     onClick={(e) => go(e, l.id)}
                     tabIndex={open ? 0 : -1}
-                    className={`block rounded-full px-5 py-3 text-base font-semibold tracking-[-0.01em] text-[#A8C8EB]/80 transition-colors duration-300 [@media(hover:hover)]:hover:bg-[#253B56]/40 ${FOCUS}`}
+                    className={`block rounded-full px-5 py-3 text-base font-semibold tracking-[-0.01em] text-subheading transition-colors duration-300 [@media(hover:hover)]:hover:bg-section-border/40 ${FOCUS}`}
                   >
                     {l.label}
                   </a>

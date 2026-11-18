@@ -1,7 +1,28 @@
 import type { Metadata } from "next";
-import "./globals.css";
 import SmoothScroll from "@/provider/smooth-scroll-provider";
+import "./globals.css";
+import { Manrope, JetBrains_Mono, Orbitron } from "next/font/google";
 
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["500", "600", "800"],
+  display: "swap",
+  variable: "--font-manrope",
+});
+
+const jetbrains = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["500", "600"],
+  display: "swap",
+  variable: "--font-jetbrains",
+});
+
+const orbitron = Orbitron({
+  subsets: ["latin"],
+  weight: ["800"],
+  display: "swap",
+  variable: "--font-orbitron",
+});
 
 export const metadata: Metadata = {
   title: "Asad Khan — Backend Developer",
@@ -11,11 +32,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" >
-      <body className="bg-[#0a0a0a] font-[family-name:var(--font-inter)] text-[#f4f1ea] antialiased">
-        <SmoothScroll> {children}</SmoothScroll>
-        
-        
+    <html lang="en" className={`${manrope.variable} ${jetbrains.variable} ${orbitron.variable}`}>
+      <body className="bg-section-bg font-display text-heading antialiased">
+        <SmoothScroll>{children}</SmoothScroll>
       </body>
     </html>
   );

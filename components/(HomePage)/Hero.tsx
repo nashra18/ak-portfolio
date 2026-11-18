@@ -2,38 +2,28 @@
 
 import { useEffect, useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
-import { Manrope } from "next/font/google";
 
-const manrope = Manrope({
-  subsets: ["latin"],
-  weight: ["500", "600", "800"],
-  display: "swap",
-  variable: "--font-hero-display",
-});
-
-/* One font only. DISPLAY and MONO point to the same Manrope variable,
-   so Stats and Testimonials keep working without changes. */
-export const VARS = manrope.variable;
-export const DISPLAY = "font-[family-name:var(--font-hero-display)]";
-export const MONO = "font-[family-name:var(--font-hero-display)] tabular-nums";
+/* Fonts are loaded once in layout.tsx (--font-manrope), so there is no next/font here.
+   These exports stay so Stats and Testimonials keep working without changes. */
+export const VARS = "";
+export const DISPLAY = "font-display";
+export const MONO = "font-display tabular-nums";
 
 const HIDDEN = "opacity-0 motion-reduce:opacity-100";
 const SPRING = "ease-[cubic-bezier(.22,1,.36,1)]";
 const useIso = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /*
-  Palette
-  Obsidian #0B111B (bg) | Atlantic #253B56 (button border) | Ice Sheet #DFEAF5 (name, title)
-  Tangerine #FF895D (accent, grid dots) | Glacier #A8C8EB (grid lines, role, highlight) | Storm #657E9B (quiet)
+  Theme (globals.css) is the single source for colours, sizes and weights.
+  The canvas cannot read Tailwind classes, so these two hex values must match the theme:
+    LINE   = --color-subheading (glacier)
+    ACCENT = --color-accent (tangerine)
 
   Notes
-  - Refresh glitch fixes:
-    1. ASAD and KHAN are hidden in the markup too (HIDDEN), so the server HTML never flashes them
-       before GSAP moves them down.
-    2. The idle drift now starts the virtual pointer at its target instead of (0, 0),
-       so the mesh no longer gets yanked after about 1.5s.
-  - Grid animation logic is unchanged. Only values were lowered (opacity, force, dot size)
-    so the background draws less attention.
+  - ASAD and KHAN are hidden in the markup too (HIDDEN), so the server HTML never flashes them
+    before GSAP moves them down.
+  - The idle drift starts the virtual pointer at its target instead of (0, 0).
+  - Grid animation logic is unchanged.
 */
 
 const LINE = "#A8C8EB";
@@ -371,10 +361,10 @@ function Btn({ href, children, ghost, download }: { href: string; children: Reac
       href={href}
       download={download}
       onClick={onClick}
-      className={`group inline-flex w-fit items-center justify-center gap-2 whitespace-nowrap rounded-full px-6 py-3 text-sm font-semibold leading-none transition-transform duration-500 ${SPRING} hover:-translate-y-0.5 active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FF895D] md:px-8 md:py-4 md:text-base ${
+      className={`group inline-flex w-fit items-center justify-center gap-2 whitespace-nowrap rounded-full px-6 py-3 text-sm font-semibold leading-none transition-transform duration-500 ${SPRING} hover:-translate-y-0.5 active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent md:px-8 md:py-4 md:text-base ${
         ghost
-          ? "border border-[#253B56] bg-[#0B111B]/60 text-[#DFEAF5] hover:border-[#657E9B]"
-          : "bg-[#FF895D] text-[#0B111B]"
+          ? "border border-button-ghost-border bg-button-ghost-bg text-heading hover:border-button-ghost-border-hover"
+          : "bg-button-bg text-on-accent"
       }`}
     >
       {children}
@@ -429,14 +419,14 @@ export default function Hero() {
     <header
       ref={root}
       id="top"
-      className={`${VARS} ${DISPLAY} relative isolate flex min-h-[100svh] flex-col justify-between gap-10 overflow-clip bg-[#0B111B] px-5 pb-10 pt-24 text-[#DFEAF5] antialiased selection:bg-[#FF895D] selection:text-[#0B111B] md:justify-end md:gap-[min(4vw,5vh)] md:px-12 md:pb-12 md:pt-14 lg:px-16`}
+      className={`${DISPLAY} relative isolate flex min-h-[100svh] flex-col justify-between gap-10 overflow-clip bg-section-bg px-gutter pb-10 pt-24 text-heading antialiased selection:bg-accent selection:text-on-accent md:justify-end md:gap-[min(4vw,5vh)] md:px-gutter-md md:pb-12 md:pt-14 lg:px-gutter-lg`}
     >
       <GridCanvas g={g} />
 
       {/* Name: ASAD left, KHAN right. Role and status sit beside KHAN on desktop. */}
       <h1
         aria-label="Asad Khan"
-        className="relative z-10 flex select-none flex-col gap-2 text-[27vw] font-extrabold leading-[0.82] tracking-[-0.05em] md:gap-0 md:pr-14 md:text-[length:min(17vw,22vh)]"
+        className="relative z-10 flex select-none flex-col gap-2 text-display text-heading md:gap-0 md:pr-14 md:text-display-md"
       >
         <span aria-hidden className="block self-start overflow-hidden pb-[0.04em]">
           <span data-line className={`block will-change-transform ${HIDDEN}`}>ASAD</span>
@@ -447,11 +437,10 @@ export default function Hero() {
             data-fade
             className={`order-2 flex flex-col gap-3 text-base font-semibold leading-none tracking-normal md:order-1 md:pb-[1.6vw] md:text-[length:min(1.7vw,2.6vh)] ${HIDDEN}`}
           >
-            <span className="whitespace-nowrap text-[#A8C8EB]">
-              Backend developer <span className="text-[#657E9B]">and freelancer</span>
+            <span className="whitespace-nowrap text-subheading">
+              Backend developer <span className="text-muted">and freelancer</span>
             </span>
-            <span className="inline-flex items-center gap-2 text-[0.8em] font-medium text-[#657E9B]">
-              <span aria-hidden className="size-1.5 rounded-full bg-[#FF895D]" />
+            <span className="inline-flex items-center gap-2 text-[0.8em] font-medium text-muted">
               Open to work
             </span>
           </span>
@@ -466,9 +455,9 @@ export default function Hero() {
       <div className="relative z-10 flex flex-col gap-8 md:flex-row md:items-end md:justify-between md:gap-12 md:pr-14">
         <p
           data-fade
-          className={`max-w-[24ch] text-[length:clamp(1.6rem,7vw,2.1rem)] font-semibold leading-[1.12] tracking-[-0.03em] text-[#DFEAF5] md:max-w-[28ch] md:text-[length:min(2.9vw,5vh)] md:leading-[1.1] ${HIDDEN}`}
+          className={`max-w-[24ch] text-lead text-heading md:max-w-[28ch] md:text-lead-md ${HIDDEN}`}
         >
-          I build the <span className="text-[#A8C8EB]">part of the product</span> nobody sees, and make sure it never lets anyone down.
+          I build the <span className="text-subheading">part of the product</span> nobody sees, and make sure it never lets anyone down.
         </p>
 
         <div data-fade className={`flex flex-row flex-wrap gap-3 ${HIDDEN}`}>

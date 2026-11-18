@@ -1,27 +1,7 @@
 "use client";
 
-/**
- * Footer. Very clean.
- * Needs: next (next/font), Tailwind. No animation library.
- *
- * Palette
- * Atlantic #253B56 (whole footer bg) | Tangerine #FF895D (email button, on hover only)
- * Ice Sheet #DFEAF5 (headline, email, links) | Glacier #A8C8EB (quiet text, softened)
- * Obsidian #0B111B (text on the button when hovered)
- *
- * Left: headline and one Gmail button (outlined, arrow inside it, fills Tangerine on hover).
- * Right: two short link columns. Bottom: one quiet row.
- * Always at least 80% of the screen height. No dividers, no animation.
- * This is the Contact section: it carries id="contact" for the navbar.
- */
-
-import { Manrope } from "next/font/google";
-
-const manrope = Manrope({
-  subsets: ["latin"],
-  weight: ["500", "600", "800"],
-  display: "swap",
-});
+/* Theme (globals.css) is the single source for colours, sizes and weights.
+   Fonts are loaded once in layout.tsx. This is the Contact section: id="contact". */
 
 /* Content: edit here */
 
@@ -48,9 +28,9 @@ const DATA = {
   copyright: "© 2026 Designed and developed by Asad Khan. All rights reserved.",
 };
 
-const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FF895D]";
+const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent";
 const LINK =
-  "text-[15px] font-medium text-[#DFEAF5] transition-colors duration-300 [@media(hover:hover)]:hover:text-[#FF895D]";
+  "text-[15px] font-medium text-heading transition-colors duration-300 [@media(hover:hover)]:hover:text-accent";
 
 export default function Footer() {
   const go = (e: React.MouseEvent, id: string) => {
@@ -64,25 +44,22 @@ export default function Footer() {
   return (
     <footer
       id="contact"
-      className={`${manrope.className} bg-[#253B56] text-[#DFEAF5] antialiased [-webkit-tap-highlight-color:transparent] selection:bg-[#FF895D] selection:text-[#0B111B]`}
+      className="bg-footer-bg font-display text-heading antialiased [-webkit-tap-highlight-color:transparent] selection:bg-accent selection:text-on-accent"
     >
-      <div className="mx-auto flex min-h-[80svh] w-full max-w-[90rem] flex-col px-5 pt-24 md:px-12 md:pt-32 lg:px-16">
-        {/* middle: takes the free space and centres its content */}
+      <div className="mx-auto flex min-h-[80svh] w-full max-w-page flex-col px-gutter pt-24 md:px-gutter-md md:pt-32 lg:px-gutter-lg">
         <div className="flex flex-1 flex-col justify-center gap-16 md:flex-row md:items-end md:justify-between md:gap-12">
           {/* left: headline and the Gmail block */}
           <div className="w-full max-w-xl">
-            <h2 className="max-w-[14ch] text-[clamp(2rem,4.8vw,3.75rem)] font-extrabold leading-[1.05] tracking-[-0.045em]">
-              {DATA.headline}
-            </h2>
+            <h2 className="max-w-[14ch] text-headline text-heading">{DATA.headline}</h2>
 
-            <p className="mt-8 text-sm font-semibold text-[#A8C8EB]/70 md:mt-10">Email me</p>
+            <p className="mt-8 text-sm font-semibold text-subheading-soft md:mt-10">Email me</p>
 
             <a
               href={GMAIL}
               target="_blank"
               rel="noopener noreferrer"
               aria-label={`Email ${EMAIL} with Gmail`}
-              className={`group mt-3 inline-flex max-w-full items-center gap-2.5 rounded-full border border-[#DFEAF5]/35 px-6 py-3.5 text-[#DFEAF5] transition-colors duration-300 [@media(hover:hover)]:hover:border-[#FF895D] [@media(hover:hover)]:hover:bg-[#FF895D] [@media(hover:hover)]:hover:text-[#0B111B] ${FOCUS}`}
+              className={`group mt-3 inline-flex max-w-full items-center gap-2.5 rounded-full border border-heading/35 px-6 py-3.5 text-heading transition-colors duration-300 [@media(hover:hover)]:hover:border-accent [@media(hover:hover)]:hover:bg-button-bg [@media(hover:hover)]:hover:text-on-accent ${FOCUS}`}
             >
               <span className="min-w-0 break-all text-sm font-extrabold tracking-[-0.01em] md:text-base">{EMAIL}</span>
               <svg
@@ -103,7 +80,7 @@ export default function Footer() {
           {/* right: two short columns */}
           <div className="flex gap-16 md:gap-20">
             <nav aria-label="Footer">
-              <h3 className="text-xs font-semibold text-[#A8C8EB]/70 md:text-sm">Navigate</h3>
+              <h3 className="text-xs font-semibold text-subheading-soft md:text-sm">Navigate</h3>
               <ul className="mt-4 flex flex-col gap-3">
                 {DATA.navigate.map((l) => (
                   <li key={l.id}>
@@ -116,7 +93,7 @@ export default function Footer() {
             </nav>
 
             <div>
-              <h3 className="text-xs font-semibold text-[#A8C8EB]/70 md:text-sm">Connect</h3>
+              <h3 className="text-xs font-semibold text-subheading-soft md:text-sm">Connect</h3>
               <ul className="mt-4 flex flex-col gap-3">
                 {DATA.connect.map((l) => (
                   <li key={l.label}>
@@ -130,13 +107,13 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* bottom row: quiet, always at the bottom */}
-        <div className="flex items-end justify-between gap-4 pb-8 pt-20 text-xs font-medium text-[#A8C8EB]/70 md:pb-10 md:text-sm">
+        {/* bottom row */}
+        <div className="flex items-end justify-between gap-4 pb-8 pt-20 text-xs font-medium text-subheading-soft md:pb-10 md:text-sm">
           <p className="max-w-[28ch] leading-[1.6] md:max-w-none">{DATA.copyright}</p>
           <button
             type="button"
             onClick={toTop}
-            className={`shrink-0 cursor-pointer transition-colors duration-300 [@media(hover:hover)]:hover:text-[#FF895D] ${FOCUS}`}
+            className={`shrink-0 cursor-pointer transition-colors duration-300 [@media(hover:hover)]:hover:text-accent ${FOCUS}`}
           >
             Back to top
           </button>

@@ -1,21 +1,6 @@
 "use client";
 
-/**
- * About section. Self-contained.
- * Needs: next (next/image, next/font), gsap (ScrollTrigger), Tailwind.
- *
- * Palette
- * Obsidian #0B111B (bg) | Atlantic #253B56 (borders) | Ice Sheet #DFEAF5 (main text)
- * Tangerine #FF895D (accent) | Glacier #A8C8EB (highlights) | Storm #657E9B (quiet text)
- *
- * Type scale (one font, three weights): 800 titles and numbers, 600 headline, 500 body.
- * A thin dashed line separates the text from the stats, same as Skills and Education.
- * Motion: one soft fade-up per block when it enters the screen. Nothing else moves.
- * Layout: portrait on the left, text on the right, on every screen size.
- */
-
 import Image from "next/image";
-import { Manrope } from "next/font/google";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import gsap from "gsap";
@@ -23,14 +8,9 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const manrope = Manrope({
-  subsets: ["latin"],
-  weight: ["500", "600", "800"],
-  display: "swap",
-  variable: "--font-about-display",
-});
+/* Theme (globals.css) is the single source for colours, sizes and weights.
+   Font is loaded once in layout.tsx. */
 
-const DISPLAY = "font-[family-name:var(--font-about-display)]";
 const HIDDEN = "opacity-0 motion-reduce:opacity-100";
 const useIso = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
@@ -42,8 +22,7 @@ const DATA = {
     "I'm Asad Khan, a final year B.Tech IT student focused on backend engineering. I design secure APIs, scalable systems and reliable applications with Java and Spring Boot.",
   buttonLabel: "Know more",
 
-  /* Modal: three paragraphs. Who he is, what he does, what he believes.
-     A blank line between them makes a new paragraph. */
+  /* Modal: three paragraphs. A blank line between them makes a new paragraph. */
   full: `I'm Asad Khan, a final year B.Tech Information Technology student, graduating in 2027. I learn by building, so most of what I know comes from shipping real projects, solving 800+ problems on LeetCode and sharing my journey publicly.
 
 Day to day I work on backends. I build APIs protected with JWT and role based access, design systems that can grow, and write applications that stay reliable under real use, mostly with Java and Spring Boot. Alongside that, I build AI products, like a health chatbot on Google Gemini and ML models for air quality and exoplanet detection.
@@ -57,9 +36,7 @@ I believe the best part of a product is the part nobody notices, because it neve
   ],
 };
 
-/* Button: height comes from py, not a fixed h. No lift, only a slight brightness change. */
-
-const BTN_SOLID = `group inline-flex w-fit cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[#FF895D] px-4 py-3 text-[13px] font-semibold leading-none text-[#0B111B] transition-[filter] duration-300 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FF895D] md:gap-2 md:px-8 md:py-4 md:text-base`;
+const BTN_SOLID = `group inline-flex w-fit cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-button-bg px-4 py-3 text-[13px] font-semibold leading-none text-on-accent transition-[filter] duration-300 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent md:gap-2 md:px-8 md:py-4 md:text-base`;
 
 const ArrowRight = () => (
   <svg viewBox="0 0 24 24" className="size-3.5 shrink-0 md:size-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -69,7 +46,7 @@ const ArrowRight = () => (
 
 /** Key words get colour, so the eye lands on them first */
 function Hi({ text, words, className }: { text: string; words: string[]; className: string }) {
-  const re = new RegExp("(" + words.join("|") + ")", "g"); // words are plain text, no special characters
+  const re = new RegExp("(" + words.join("|") + ")", "g");
   return (
     <>
       {text.split(re).map((part, i) =>
@@ -85,18 +62,17 @@ function Hi({ text, words, className }: { text: string; words: string[]; classNa
   );
 }
 
-/** Stats: small numbers, quiet labels. The plus sign is small and raised, in Glacier. */
 function Stats({ className }: { className: string }) {
   return (
     <dl className={className}>
       {DATA.stats.map((s) => (
         <div key={s.label} data-fade className={`flex min-w-0 flex-col items-center gap-1.5 text-center md:items-start md:gap-2 md:text-left ${HIDDEN}`}>
-          <dt className="flex min-h-[3em] items-end justify-center text-[11px] font-medium leading-[1.4] text-[#657E9B] md:min-h-0 md:justify-start md:text-sm">
+          <dt className="flex min-h-[3em] items-end justify-center text-small md:text-small-md md:min-h-0 md:justify-start font-medium leading-[1.4] text-muted">
             {s.label}
           </dt>
-          <dd className="text-[1.6rem] font-extrabold leading-none tracking-[-0.04em] tabular-nums text-[#DFEAF5] md:text-[length:min(3.4vw,5.5vh)]">
+          <dd className="text-stat md:text-stat-md tabular-nums text-heading">
             {s.value}
-            {s.suffix && <span className="ml-0.5 align-top text-[0.55em] font-semibold text-[#A8C8EB]">{s.suffix}</span>}
+            {s.suffix && <span className="ml-0.5 align-top text-[0.55em] font-semibold text-subheading">{s.suffix}</span>}
           </dd>
         </div>
       ))}
@@ -123,10 +99,9 @@ function AboutModal({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   if (!open || !mounted) return null;
 
-  // Rendered in a portal on document.body, so the blur covers the whole website, not just this section
   return createPortal(
     <div
-      className={`${manrope.variable} ${DISPLAY} fixed inset-0 z-[9998] flex items-center justify-center bg-[#0B111B]/70 p-4 backdrop-blur-md`}
+      className="font-display fixed inset-0 z-[9998] flex items-center justify-center bg-section-bg/70 p-4 backdrop-blur-md"
       onClick={onClose}
     >
       <div
@@ -134,15 +109,15 @@ function AboutModal({ open, onClose }: { open: boolean; onClose: () => void }) {
         aria-modal="true"
         aria-label="About me"
         onClick={(e) => e.stopPropagation()}
-        className="relative flex max-h-[85vh] w-full max-w-[760px] flex-col rounded-3xl border border-[#253B56] bg-[#0B111B] shadow-2xl"
+        className="relative flex max-h-[85vh] w-full max-w-[760px] flex-col rounded-3xl border border-section-border bg-section-bg shadow-2xl"
       >
         <div className="flex-1 overflow-y-auto px-6 pb-8 pt-14 md:px-10 md:pb-10 md:pt-16" data-lenis-prevent="true">
-          <p className="whitespace-pre-line text-xl font-medium leading-9 text-[#DFEAF5]/90 md:text-2xl md:leading-10">{DATA.full}</p>
+          <p className="whitespace-pre-line text-xl font-medium leading-9 text-paragraph-strong md:text-2xl md:leading-10">{DATA.full}</p>
         </div>
         <button
           onClick={onClose}
           aria-label="Close"
-          className="absolute right-4 top-4 grid size-9 cursor-pointer place-items-center rounded-full text-[#657E9B] transition-colors hover:text-[#DFEAF5] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF895D]"
+          className="absolute right-4 top-4 grid size-9 cursor-pointer place-items-center rounded-full text-muted transition-colors hover:text-heading focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
             <path d="M6 6l12 12M18 6L6 18" />
@@ -182,18 +157,15 @@ export default function About() {
     <section
       ref={root}
       id="about"
-      className={`${manrope.variable} ${DISPLAY} relative isolate overflow-clip bg-[#0B111B] text-[#DFEAF5] antialiased selection:bg-[#FF895D] selection:text-[#0B111B]`}
+      className="relative isolate overflow-clip bg-section-bg font-display text-heading antialiased selection:bg-accent selection:text-on-accent"
     >
-      <div className="mx-auto flex w-full max-w-[90rem] flex-col gap-10 px-5 pb-20 pt-32 md:block md:px-12 md:pb-28 md:pt-36 lg:px-16">
+      <div className="mx-auto flex w-full max-w-page flex-col gap-10 px-gutter pb-section pt-32 md:block md:px-gutter-md md:pb-section-md md:pt-36 lg:px-gutter-lg">
         {/* Title: one line */}
-        <h2
-          data-fade
-          className={`select-none whitespace-nowrap text-[11vw] font-extrabold leading-[0.9] tracking-[-0.055em] text-[#DFEAF5] md:text-[length:min(8vw,12vh)] ${HIDDEN}`}
-        >
+        <h2 data-fade className={`select-none whitespace-nowrap text-h2 md:text-h2-md text-heading ${HIDDEN}`}>
           About me
         </h2>
 
-        {/* Portrait left, text right. On desktop both start at the top, and the portrait is pulled up with md:-mt-[25vh]. */}
+        {/* Portrait left, text right */}
         <div className="grid grid-cols-[36%_1fr] items-center gap-x-3 md:mt-[3vh] md:grid-cols-2 md:items-start md:gap-x-10 xl:grid-cols-[minmax(0,24rem)_1fr] xl:gap-x-16">
           <div data-fade className={`relative -ml-2 w-[calc(100%+0.5rem)] md:-mt-[25vh] md:ml-0 md:w-full xl:max-w-[24rem] ${HIDDEN}`}>
             <Image
@@ -208,14 +180,11 @@ export default function About() {
           </div>
 
           <div className="flex flex-col justify-center gap-4 md:justify-start md:gap-6 md:pt-[4vh] xl:gap-7">
-            <p
-              data-fade
-              className={`text-[1.4rem] font-semibold leading-[1.12] tracking-[-0.035em] text-[#DFEAF5] sm:text-3xl md:text-4xl xl:text-[length:min(4rem,7.4vh)] ${HIDDEN}`}
-            >
-              <Hi text={DATA.intro} words={["backends", "AI"]} className="text-[#A8C8EB]" />
+            <p data-fade className={`text-lead md:text-lead-md text-heading ${HIDDEN}`}>
+              <Hi text={DATA.intro} words={["backends", "AI"]} className="text-subheading" />
             </p>
 
-            <p data-fade className={`max-w-[44ch] text-[14px] font-medium leading-[1.6] text-[#A8C8EB]/70 sm:text-base md:text-lg ${HIDDEN}`}>
+            <p data-fade className={`max-w-[44ch] text-body md:text-body-md text-subheading-soft ${HIDDEN}`}>
               {DATA.description}
             </p>
 
@@ -226,13 +195,13 @@ export default function About() {
               </button>
             </div>
 
-            {/* Desktop only: dashed line, then stats, inside the text column */}
-            <Stats className="relative z-10 hidden border-t border-dashed border-[#253B56] md:mt-6 md:grid md:grid-cols-3 md:gap-8 md:pt-8 xl:mt-8 xl:gap-10" />
+            {/* Desktop only: dashed line, then stats */}
+            <Stats className="relative z-10 hidden border-t border-dashed border-section-border md:mt-6 md:grid md:grid-cols-3 md:gap-8 md:pt-8 xl:mt-8 xl:gap-10" />
           </div>
         </div>
 
         {/* Phone only: dashed line, then stats below the grid */}
-        <Stats className="relative z-10 grid grid-cols-3 gap-4 border-t border-dashed border-[#253B56] pt-8 md:hidden" />
+        <Stats className="relative z-10 grid grid-cols-3 gap-4 border-t border-dashed border-section-border pt-8 md:hidden" />
       </div>
 
       <AboutModal open={open} onClose={() => setOpen(false)} />

@@ -1,4 +1,166 @@
 @import "tailwindcss";
 
+@theme inline {
+  --font-display: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --font-logo: var(--font-orbitron), ui-sans-serif, system-ui, sans-serif;
+}
+
+@theme {
+  /* ---------- BACKGROUNDS (full black, solid, no gradients) ---------- */
+  --color-section-bg: #000000;        /* pure black */
+  --color-footer-bg: #000000;         /* pure black (separated by a border) */
+  --color-card-bg: #0F1216;           /* card type 1: project cards */
+  --color-card-bg-hover: #151A20;
+  --color-panel-bg: #0B0D10;          /* card type 2: milestone panels */
+  --color-row-hover: #14181D;         /* row hover inside a panel */
+  --color-chip-bg: #161B21;
+  --color-button-bg: #FF895D;         /* tangerine */
+  --color-button-ghost-bg: #00000099; /* black 60% */
+
+  /* ---------- BORDERS (crisp, clearly visible) ---------- */
+  --color-section-border: #252C35;    /* dividers, dashed lines, navbar pill */
+  --color-card-border: #2E3640;
+  --color-card-border-hover: #566273;
+  --color-panel-border: #2A323C;
+  --color-panel-border-hover: #566273;
+  --color-chip-border: #343D49;
+  --color-button-ghost-border: #2E3640;
+  --color-button-ghost-border-hover: #7C8CA3;
+
+  /* ---------- TEXT ---------- */
+  --color-heading: #F5F7FA;           /* near white */
+  --color-paragraph: #F5F7FAA8;       /* near white 66% */
+  --color-paragraph-strong: #F5F7FAD1; /* near white 82% */
+  --color-subheading: #A8C8EB;        /* glacier */
+  --color-subheading-soft: #A8C8EBB8; /* glacier 72% */
+  --color-muted: #7C8CA3;             /* storm, lifted for black */
+  --color-accent: #FF895D;            /* tangerine */
+  --color-on-accent: #000000;         /* text on tangerine */
+  --color-chip-text: #B9D3F0;
+
+  /* ---------- HEADING + TEXT SIZES ---------- */
+  --text-display: 27vw;
+  --text-display--line-height: 0.82;
+  --text-display--letter-spacing: -0.05em;
+  --text-display--font-weight: 800;
+  --text-display-md: min(17vw, 22vh);
+  --text-display-md--line-height: 0.82;
+  --text-display-md--letter-spacing: -0.05em;
+  --text-display-md--font-weight: 800;
+
+   --text-h2: 9vw;
+  --text-h2--line-height: 0.95;
+  --text-h2--letter-spacing: -0.05em;
+  --text-h2--font-weight: 800;
+  --text-h2-md: min(4.8vw, 8vh);
+  --text-h2-md--line-height: 0.95;
+  --text-h2-md--letter-spacing: -0.05em;
+  --text-h2-md--font-weight: 800;
+
+  --text-h3: clamp(1rem, 3vw, 1.1rem);
+  --text-h3--line-height: 1.15;
+  --text-h3--letter-spacing: -0.035em;
+  --text-h3--font-weight: 600;
+  --text-h3-md: min(2.4vw, 4vh);
+  --text-h3-md--line-height: 1.15;
+  --text-h3-md--letter-spacing: -0.035em;
+  --text-h3-md--font-weight: 600;
+
+  --text-card: 1.9rem;
+  --text-card--line-height: 1;
+  --text-card--letter-spacing: -0.055em;
+  --text-card--font-weight: 800;
+  --text-card-md: 2.4rem;
+  --text-card-md--line-height: 1;
+  --text-card-md--letter-spacing: -0.055em;
+  --text-card-md--font-weight: 800;
+
+  --text-lead: clamp(1.6rem, 7vw, 2.1rem);
+  --text-lead--line-height: 1.12;
+  --text-lead--letter-spacing: -0.03em;
+  --text-lead--font-weight: 600;
+  --text-lead-md: min(2.9vw, 5vh);
+  --text-lead-md--line-height: 1.1;
+  --text-lead-md--letter-spacing: -0.03em;
+  --text-lead-md--font-weight: 600;
+
+  --text-body: 15px;
+  --text-body--line-height: 1.7;
+  --text-body--font-weight: 500;
+  --text-body-md: 16px;
+  --text-body-md--line-height: 1.7;
+  --text-body-md--font-weight: 500;
+
+--text-sub: clamp(1rem, 2.5vw, 1.125rem);
+--text-sub--line-height: 1.65;
+--text-sub--font-weight: 500;
+
+--text-sub-md: 1.125rem;
+--text-sub-md--line-height: 1.65;
+--text-sub-md--font-weight: 500;
 
 
+  --text-small: 11px;
+  --text-small--line-height: 1;
+  --text-small--font-weight: 600;
+  --text-small-md: 12px;
+  --text-small-md--line-height: 1;
+  --text-small-md--font-weight: 600;
+  --tracking-eyebrow: 0.18em;
+
+  --text-stat: 1.75rem;
+  --text-stat--line-height: 1;
+  --text-stat--letter-spacing: -0.04em;
+  --text-stat--font-weight: 800;
+  --text-stat-md: 2.25rem;
+  --text-stat-md--line-height: 1;
+  --text-stat-md--letter-spacing: -0.04em;
+  --text-stat-md--font-weight: 800;
+
+  --text-headline: clamp(2rem, 4.8vw, 3.75rem);
+  --text-headline--line-height: 1.05;
+  --text-headline--letter-spacing: -0.045em;
+  --text-headline--font-weight: 800;
+
+  --text-statement: clamp(2rem, 3.2vw, 2.75rem);
+  --text-statement--line-height: 1.2;
+  --text-statement--letter-spacing: -0.04em;
+  --text-statement--font-weight: 600;
+
+  --text-title: clamp(2.25rem, 10vw, 3rem);
+  --text-title--line-height: 0.95;
+  --text-title--letter-spacing: -0.055em;
+  --text-title--font-weight: 800;
+  --text-title-md: min(3.8vw, 7vh);
+  --text-title-md--line-height: 0.95;
+  --text-title-md--letter-spacing: -0.055em;
+  --text-title-md--font-weight: 800;
+
+  /* ---------- SPACING ---------- */
+  --spacing-gutter: 1.25rem;
+  --spacing-gutter-md: 3rem;
+  --spacing-gutter-lg: 4rem;
+  --spacing-section: 5rem;
+  --spacing-section-md: 7rem;
+  --spacing-card: 1.5rem;
+  --spacing-card-md: 2rem;
+
+  /* ---------- SHAPE (tighter corners, sharper feel) ---------- */
+  --radius-card: 0.875rem;
+  --radius-panel: 1.25rem;
+  --radius-chip: 0.25rem;
+  --container-page: 90rem;
+}
+
+/* Page background and selection, so nothing flashes white outside the sections */
+@layer base {
+  html,
+  body {
+    background: var(--color-section-bg);
+  }
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+}
