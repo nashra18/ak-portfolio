@@ -5,14 +5,14 @@ import { Montserrat, JetBrains_Mono, Orbitron } from "next/font/google";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
-  weight: ["500", "600", "800"],
+  weight: ["300", "400", "600"],
   display: "swap",
   variable: "--font-montserrat",
 });
 
 const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
-  weight: ["500", "600"],
+  weight: ["300", "400"],
   display: "swap",
   variable: "--font-jetbrains",
 });
