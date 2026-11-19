@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /* Theme (globals.css) is the single source for colours and fonts.
    Fonts: font-display (Manrope) and font-logo (Orbitron), both loaded in layout.tsx. */
@@ -34,6 +34,8 @@ const SOCIALS = [
   { label: "LeetCode", href: "https://leetcode.com/meranaamkhann" },
 ];
 
+const EASE = "ease-[cubic-bezier(.22,1,.36,1)]";
+
 /* Contact is the footer: use id="contact" if it exists, otherwise the <footer> tag itself */
 const findSection = (id: string) =>
   document.getElementById(id) ?? (id === "contact" ? document.querySelector("footer") : null);
@@ -49,7 +51,7 @@ function Socials({ size, tabbable = true }: { size: string; tabbable?: boolean }
             rel="noopener noreferrer"
             aria-label={s.label}
             tabIndex={tabbable ? 0 : -1}
-            className={`grid ${size} place-items-center rounded-full border border-section-border text-heading transition-colors duration-300 [@media(hover:hover)]:hover:border-accent [@media(hover:hover)]:hover:text-accent ${FOCUS}`}
+            className={`grid ${size} place-items-center rounded-full border border-section-border text-heading transition-[color,border-color,transform] duration-300 [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:border-accent [@media(hover:hover)]:hover:text-accent motion-reduce:transition-none ${FOCUS}`}
           >
             <svg viewBox="0 0 24 24" className="size-[15px]" fill="currentColor" aria-hidden>
               <path d={ICONS[s.label]} />
@@ -64,6 +66,11 @@ function Socials({ size, tabbable = true }: { size: string; tabbable?: boolean }
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState("");
+  const [hidden, setHidden] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [pill, setPill] = useState({ left: 0, width: 0, show: false });
+
+  const linkRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
 
   // Highlight the section that is in the middle of the screen
   useEffect(() => {
@@ -77,17 +84,56 @@ export default function Navbar() {
       { rootMargin: "-40% 0px -55% 0px" }
     );
     map.forEach((_, el) => io.observe(el));
-
-    // at the very bottom of the page, Contact (the footer) is the active one
-    const onScroll = () => {
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) setActive("contact");
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      io.disconnect();
-      window.removeEventListener("scroll", onScroll);
-    };
+    return () => io.disconnect();
   }, []);
+
+  // Scroll: hide going down, show going up, bottom = Contact
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let ticking = false;
+
+    const update = () => {
+      ticking = false;
+      const y = window.scrollY;
+
+      setScrolled(y > 8);
+
+      const dy = y - lastY;
+      if (y < 80) {
+        setHidden(false);
+        lastY = y;
+      } else if (Math.abs(dy) > 6) {
+        setHidden(dy > 0);
+        lastY = y;
+      }
+
+      // at the very bottom of the page, Contact (the footer) is the active one
+      if (window.innerHeight + y >= document.documentElement.scrollHeight - 4) setActive("contact");
+    };
+
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Sliding pill behind the active desktop link
+  useEffect(() => {
+    const measure = () => {
+      const el = linkRefs.current[active];
+      if (el) setPill({ left: el.offsetLeft, width: el.offsetWidth, show: true });
+      else setPill((p) => ({ ...p, show: false }));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    document.fonts?.ready.then(measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [active]);
 
   // Menu open: close with Escape, and when the screen grows to desktop
   useEffect(() => {
@@ -117,6 +163,8 @@ export default function Navbar() {
     history.replaceState(null, "", window.location.pathname);
   };
 
+  const away = hidden && !open;
+
   return (
     <>
       {/* blurs the whole page behind the menu, tap to close (phone and tablet) */}
@@ -128,26 +176,48 @@ export default function Navbar() {
         }`}
       />
 
-      <header className="pointer-events-none fixed inset-x-0 top-3 z-[60] flex justify-center font-display antialiased [-webkit-tap-highlight-color:transparent] selection:bg-accent selection:text-on-accent md:top-5">
+      <header
+        onFocusCapture={() => setHidden(false)}
+        className={`pointer-events-none fixed inset-x-0 top-3 z-[60] flex justify-center font-display antialiased transition-transform duration-500 ${EASE} [-webkit-tap-highlight-color:transparent] selection:bg-accent selection:text-on-accent motion-reduce:transition-none md:top-5 ${
+          away ? "-translate-y-[160%]" : "translate-y-0"
+        }`}
+      >
         <nav aria-label="Main" className="pointer-events-auto relative w-[90vw] max-w-5xl">
           {/* the thin pill */}
-          <div className="flex h-12 items-center justify-between rounded-full border border-section-border bg-section-bg/80 pl-5 pr-2 backdrop-blur-md md:pl-6 lg:pr-3">
+          <div
+            className={`relative flex h-12 items-center justify-between rounded-full border pl-5 pr-2 backdrop-blur-md transition-[background-color,border-color] duration-500 md:pl-6 lg:pr-3 ${
+              scrolled ? "border-card-border bg-section-bg/90" : "border-section-border bg-section-bg/70"
+            }`}
+          >
             {/* Logo */}
-            <a href="#" onClick={goTop} aria-label="Home" className={`flex items-center gap-1.5 ${FOCUS}`}>
+            <a href="#" onClick={goTop} aria-label="Home" className={`group flex items-center gap-1.5 ${FOCUS}`}>
               <span className="font-logo text-xl font-extrabold leading-none tracking-[0.12em] text-heading">AK</span>
-              <span className="mt-1.5 size-1.5 bg-accent" aria-hidden />
+              <span
+                className={`mt-1.5 size-1.5 bg-accent transition-transform duration-500 ${EASE} [@media(hover:hover)]:group-hover:rotate-90 motion-reduce:transition-none`}
+                aria-hidden
+              />
             </a>
 
-            {/* Desktop links */}
-            <ul className="hidden items-center gap-8 lg:flex xl:gap-10">
+            {/* Desktop links, with a pill that slides to the active one */}
+            <ul className="relative hidden items-center gap-1 lg:flex">
+              <span
+                aria-hidden
+                className={`pointer-events-none absolute inset-y-0 my-auto h-8 rounded-full bg-chip-bg transition-[transform,width,opacity] duration-500 ${EASE} motion-reduce:transition-none ${
+                  pill.show ? "opacity-100" : "opacity-0"
+                }`}
+                style={{ width: pill.width, transform: `translateX(${pill.left}px)` }}
+              />
               {LINKS.map((l) => (
-                <li key={l.id}>
+                <li key={l.id} className="relative">
                   <a
+                    ref={(el) => {
+                      linkRefs.current[l.id] = el;
+                    }}
                     href={`#${l.id}`}
                     onClick={(e) => go(e, l.id)}
                     aria-current={active === l.id ? "true" : undefined}
-                    className={`text-sm font-semibold tracking-[-0.01em] transition-colors duration-300 [@media(hover:hover)]:hover:text-heading ${FOCUS} ${
-                      active === l.id ? "text-subheading" : "text-muted"
+                    className={`block rounded-full px-4 py-1.5 text-sm font-semibold tracking-[-0.01em] transition-colors duration-300 [@media(hover:hover)]:hover:text-heading ${FOCUS} ${
+                      active === l.id ? "text-heading" : "text-muted"
                     }`}
                   >
                     {l.label}
@@ -193,21 +263,46 @@ export default function Navbar() {
             }`}
           >
             <ul className="flex flex-col">
-              {LINKS.map((l) => (
-                <li key={l.id}>
+              {LINKS.map((l, i) => (
+                <li
+                  key={l.id}
+                  className={`transition-[opacity,transform] duration-500 ${EASE} motion-reduce:transition-none ${
+                    open ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+                  }`}
+                  style={{ transitionDelay: open ? `${80 + i * 50}ms` : "0ms" }}
+                >
                   <a
                     href={`#${l.id}`}
                     onClick={(e) => go(e, l.id)}
                     tabIndex={open ? 0 : -1}
-                    className={`block rounded-full px-5 py-3 text-base font-semibold tracking-[-0.01em] text-subheading transition-colors duration-300 [@media(hover:hover)]:hover:bg-section-border/40 ${FOCUS}`}
+                    aria-current={active === l.id ? "true" : undefined}
+                    className={`flex items-center gap-4 rounded-full px-5 py-3 text-base font-semibold tracking-[-0.01em] transition-colors duration-300 [@media(hover:hover)]:hover:bg-section-border/40 ${FOCUS} ${
+                      active === l.id ? "text-heading" : "text-subheading"
+                    }`}
                   >
+                    <span
+                      className={`w-5 text-xs tabular-nums transition-colors duration-300 ${
+                        active === l.id ? "text-accent" : "text-muted"
+                      }`}
+                    >
+                      0{i + 1}
+                    </span>
                     {l.label}
+                    <span
+                      aria-hidden
+                      className={`ml-auto size-1.5 rounded-full bg-accent transition-[opacity,transform] duration-300 ${
+                        active === l.id ? "scale-100 opacity-100" : "scale-0 opacity-0"
+                      }`}
+                    />
                   </a>
                 </li>
               ))}
             </ul>
 
-            <div className="px-3 pb-3 pt-5">
+            <div
+              className={`px-3 pb-3 pt-5 transition-opacity duration-500 ${open ? "opacity-100" : "opacity-0"}`}
+              style={{ transitionDelay: open ? "380ms" : "0ms" }}
+            >
               <Socials size="size-10" tabbable={open} />
             </div>
           </div>

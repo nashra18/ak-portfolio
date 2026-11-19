@@ -158,8 +158,9 @@ export function Approach() {
         <ol ref={list} className="relative">
           {/* Comet head: glowing orb with a tail, rides the scroll */}
           <div ref={head} aria-hidden className="pointer-events-none absolute left-0 top-0 z-20 w-[11px] opacity-0 will-change-transform">
+            {/* Tail: 1px, centred on the dot (5.5px) */}
             <span
-              className="absolute left-[4px] h-[80px] w-[3px] rounded-full"
+              className="absolute left-[5px] h-[80px] w-px"
               style={{ top: "-80px", background: `linear-gradient(to bottom, transparent, ${ACCENT})` }}
             />
             <span
@@ -178,16 +179,17 @@ export function Approach() {
             const active = i === reached - 1; // the newest one
             return (
               <li key={title} className="relative pb-14 pl-10 last:pb-0 md:pb-20 md:pl-12">
+                {/* Connector: 1px, crisp edges, centred on the dot (5.5px) */}
                 {!last && (
                   <span
                     aria-hidden
-                    className="absolute left-[4px] w-[3px] overflow-hidden rounded-full bg-section-border top-[var(--a)] bottom-[calc(-1*var(--a))] md:top-[var(--b)] md:bottom-[calc(-1*var(--b))]"
+                    className="absolute left-[5px] w-px overflow-hidden bg-section-border top-[var(--a)] bottom-[calc(-1*var(--a))] md:top-[var(--b)] md:bottom-[calc(-1*var(--b))]"
                     style={{ ["--a" as string]: DOT_TOP, ["--b" as string]: DOT_TOP_MD }}
                   >
                     <span
                       data-fill
                       className="block size-full origin-top bg-accent"
-                      style={{ transform: "scaleY(0)", boxShadow: `0 0 12px 1px ${GLOW}` }}
+                      style={{ transform: "scaleY(0)" }}
                     />
                   </span>
                 )}
